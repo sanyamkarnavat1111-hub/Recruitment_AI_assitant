@@ -1,0 +1,12 @@
+# Ignore virtual environment folders
+venv/
+env/
+__pycache__/
+*.pyc
+*.pyo
+*.pyd
+*.swp
+*.DS_Store
+
+# Ignore uploads or other temporary files
+Uploads/
