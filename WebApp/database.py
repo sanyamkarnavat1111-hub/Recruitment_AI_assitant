@@ -1,7 +1,6 @@
 import psycopg2
 from dotenv import load_dotenv
 import os
-import uuid
 
 load_dotenv()
 assert os.environ.get('EXTERNAL_DATABASE_URL'), "EXTERNAL_DATABASE_URL is missing"
@@ -14,9 +13,10 @@ def get_db_connection():
         print("Error connecting to database:", str(e))
         raise
 
-def test_connection(conn):
+def test_connection():
     """Test DB connectivity by creating & dropping a temp table."""
     try:
+        conn = get_db_connection()
         with conn.cursor() as cur:
             cur.execute("CREATE TABLE IF NOT EXISTS test (tempid INT)")
             cur.execute("DROP TABLE test")
@@ -155,8 +155,8 @@ def truncate():
         conn.close()
 
 if __name__ == "__main__":
-    conn = get_db_connection()
-    test_connection(conn)
+    
+    test_connection()
     drop_table()
     create_table()
     # truncate()

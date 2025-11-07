@@ -8,7 +8,7 @@ from langchain_core.messages import HumanMessage
 import logging
 import tempfile
 from utils import parse_file, extract_data_from_resume , analyze_resume
-from database import insert_extracted_data , get_thread_data
+from database import insert_extracted_data , get_thread_data , test_connection , drop_table , create_table
 
 
 # ====================== Logging Setup ======================
@@ -292,6 +292,9 @@ def health_check():
 
 # ====================== Run Server ======================
 if __name__ == "__main__":
+    test_connection()
+    drop_table()
+    create_table()
     port = 3333
     logger.info(f"Starting server on port {port}")
     uvicorn.run("server:app", host="0.0.0.0", port=port, reload=True)
