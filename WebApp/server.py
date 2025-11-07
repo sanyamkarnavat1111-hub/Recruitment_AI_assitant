@@ -16,9 +16,9 @@ from typing import Dict, AsyncGenerator
 logging.basicConfig(level=logging.INFO)
 logger = logging.getLogger(__name__)
 
-# In-memory thread store
+# In-memory thread store (only parsed data + analysis)
 thread_store: Dict[str, Dict] = {}
-temp_files_tracker: Dict[str, str] = {}  # file_key -> temp_path
+
 
 # ====================== Lifespan (Startup + Shutdown) ======================
 @asynccontextmanager
@@ -31,15 +31,8 @@ async def lifespan(app: FastAPI) -> AsyncGenerator:
     yield  # App runs here
 
     # --- Shutdown ---
-    logger.info("Application shutting down... Cleaning up temporary files.")
-    for temp_path in temp_files_tracker.values():
-        if os.path.exists(temp_path):
-            try:
-                os.unlink(temp_path)
-                logger.info(f"Cleaned up temp file: {temp_path}")
-            except Exception as e:
-                logger.warning(f"Failed to delete temp file {temp_path}: {e}")
-    temp_files_tracker.clear()
+    logger.info("Application shutting down... Clearing thread store.")
+    thread_store.clear()
     logger.info("Cleanup complete.")
 
 
@@ -55,9 +48,7 @@ app.add_middleware(
 )
 
 STATIC = "static"
-UPLOADS = "Uploads"
 os.makedirs(STATIC, exist_ok=True)
-os.makedirs(UPLOADS, exist_ok=True)
 
 
 # ====================== Background Health Checker ======================
@@ -112,21 +103,7 @@ def validate_upload_file(file: UploadFile, field_name: str):
     return ext
 
 
-# ====================== Helper: Save to Temp File ======================
-def save_to_tempfile(contents: bytes, suffix: str) -> str:
-    temp_file = tempfile.NamedTemporaryFile(delete=False, suffix=suffix)
-    try:
-        temp_file.write(contents)
-        temp_file.close()
-        temp_path = temp_file.name
-        return temp_path
-    except Exception as e:
-        if os.path.exists(temp_file.name):
-            os.unlink(temp_file.name)
-        raise e
-
-
-# ====================== Upload Endpoint ======================
+# ====================== Upload Endpoint (Temp File → Parse → Delete) ======================
 @app.post("/upload")
 async def upload_files(
     resume_file: UploadFile = File(None),
@@ -139,18 +116,21 @@ async def upload_files(
             detail="thread_id is required and cannot be empty."
         )
 
+    # Initialize thread
     if thread_id not in thread_store:
         thread_store[thread_id] = {
-            "resume_path": None,
-            "jd_path": None,
             "resume_data": None,
             "jd_data": None,
             "analysis": None,
             "files_uploaded": False
         }
-    
+
     thread = thread_store[thread_id]
     success = {"resume": False, "job_description": False}
+
+    # Temp file paths to delete later
+    temp_resume_path = None
+    temp_jd_path = None
 
     try:
         # ---------- Resume ----------
@@ -169,13 +149,23 @@ async def upload_files(
             if not contents:
                 raise ValueError("Resume file is empty.")
 
-            temp_path = save_to_tempfile(contents, suffix=ext)
-            temp_files_tracker[f"resume_{thread_id}"] = temp_path
+            # Save to temp file
+            temp_file = tempfile.NamedTemporaryFile(delete=False, suffix=ext)
+            temp_file.write(contents)
+            temp_file.close()
+            temp_resume_path = temp_file.name
 
-            thread["resume_path"] = temp_path
-            thread["resume_data"] = parse_file(temp_path)
+            # Parse using existing parse_file(path)
+            resume_data = parse_file(temp_resume_path)
+            thread["resume_data"] = resume_data
             success["resume"] = True
-            logger.info(f"Resume uploaded (temp) for thread {thread_id}: {resume_file.filename}")
+            logger.info(f"Resume parsed from temp file for thread {thread_id}")
+
+            # Delete immediately after parsing
+            if os.path.exists(temp_resume_path):
+                os.unlink(temp_resume_path)
+                logger.info(f"Deleted temp resume file: {temp_resume_path}")
+            temp_resume_path = None  # Prevent double delete
 
         # ---------- Job Description ----------
         if job_description_file and job_description_file.filename:
@@ -193,15 +183,25 @@ async def upload_files(
             if not contents:
                 raise ValueError("Job description file is empty.")
 
-            temp_path = save_to_tempfile(contents, suffix=ext)
-            temp_files_tracker[f"jd_{thread_id}"] = temp_path
+            # Save to temp file
+            temp_file = tempfile.NamedTemporaryFile(delete=False, suffix=ext)
+            temp_file.write(contents)
+            temp_file.close()
+            temp_jd_path = temp_file.name
 
-            thread["jd_path"] = temp_path
-            thread["jd_data"] = parse_file(temp_path)
+            # Parse
+            jd_data = parse_file(temp_jd_path)
+            thread["jd_data"] = jd_data
             success["job_description"] = True
-            logger.info(f"JD uploaded (temp) for thread {thread_id}: {job_description_file.filename}")
+            logger.info(f"JD parsed from temp file for thread {thread_id}")
 
-        # ---------- Run analysis ----------
+            # Delete immediately
+            if os.path.exists(temp_jd_path):
+                os.unlink(temp_jd_path)
+                logger.info(f"Deleted temp JD file: {temp_jd_path}")
+            temp_jd_path = None
+
+        # ---------- Run analysis when both parsed ----------
         if thread["resume_data"] and thread["jd_data"] and thread["analysis"] is None:
             try:
                 logger.info(f"Starting analysis for thread {thread_id}")
@@ -229,9 +229,24 @@ async def upload_files(
         })
 
     except HTTPException:
+        # Cleanup any temp files on error
+        for path in [temp_resume_path, temp_jd_path]:
+            if path and os.path.exists(path):
+                try:
+                    os.unlink(path)
+                    logger.info(f"Cleaned up temp file on error: {path}")
+                except:
+                    pass
         raise
     except Exception as e:
         logger.critical(f"Unexpected error in /upload for thread {thread_id}: {str(e)}")
+        # Final cleanup
+        for path in [temp_resume_path, temp_jd_path]:
+            if path and os.path.exists(path):
+                try:
+                    os.unlink(path)
+                except:
+                    pass
         return JSONResponse({
             "success": False,
             "uploaded": success,
@@ -252,7 +267,7 @@ async def answer_query(
     if not query or not query.strip():
         raise HTTPException(status_code=400, detail="Query cannot be empty.")
     if thread_id not in thread_store:
-        raise HTTPException(status_code=404, detail="Thread not found. Please upload files first.")
+        raise HTTPException(status_code=404,  detail="Thread not found. Please upload files first.")
     if not thread_store[thread_id]["files_uploaded"]:
         raise HTTPException(status_code=400, detail="Both files must be uploaded and analyzed first.")
 
@@ -282,7 +297,7 @@ def health_check():
     return {
         "status": "healthy",
         "threads_active": len(thread_store),
-        "temp_files": len(temp_files_tracker)
+        "disk_usage": "minimal (temp files deleted immediately)"
     }
 
 

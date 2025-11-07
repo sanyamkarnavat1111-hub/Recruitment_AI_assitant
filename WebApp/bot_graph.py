@@ -148,6 +148,6 @@ if __name__ == "__main__":
             ai_message = result['messages'][-1]
 
             print(f"\n[{thread_id}] AI :\n{ ai_message.content}\n")
-
+        
         except Exception as e:
             print(f"Error: {e}")
