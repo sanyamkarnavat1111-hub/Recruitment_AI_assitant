@@ -1,6 +1,5 @@
-FROM python:3.11-slim
-
-
+# This image will contain uv pre-installed 
+FROM astral/uv:python3.12-bookworm-slim
 
 WORKDIR /app
 

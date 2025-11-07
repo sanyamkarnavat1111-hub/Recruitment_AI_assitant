@@ -18,7 +18,7 @@ import os
 load_dotenv()
 
 
-GROQ_API_KEY = os.environ['GROQ_API_KEY'] if os.environ['GROQ_API_KEY'] is not None else "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"
+GROQ_API_KEY = "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"
 
 UPLOADS = "Uploads"
 
