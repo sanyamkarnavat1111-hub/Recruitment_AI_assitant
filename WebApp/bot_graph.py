@@ -2,15 +2,11 @@ from langgraph.graph import START, END, StateGraph
 from langchain_core.messages import AnyMessage, HumanMessage, AIMessage
 from langchain_core.output_parsers import StrOutputParser
 from langgraph.graph.message import add_messages
-from typing import TypedDict, Annotated, List
+from typing import TypedDict, Annotated
 from langchain_core.prompts import ChatPromptTemplate
-from langchain_groq import ChatGroq
 from langgraph.checkpoint.memory import MemorySaver
 from utils import parse_file , analyze_resume
-
-
-from pydantic import BaseModel, Field
-from typing import List
+from LLM_models import chat_llm 
 
 from dotenv import load_dotenv
 import os
@@ -18,19 +14,12 @@ import os
 load_dotenv()
 
 
-GROQ_API_KEY = "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"
-
 UPLOADS = "Uploads"
 
 
 
 
-# === Pydantic Schema for Resume Analysis ===
-class AnalyzeResumeSchema(BaseModel):
-    total_experience: int = Field(..., description="Total years of experience", ge=0)
-    skills: List[str] = Field(..., description="All skills mentioned in resume")
-    score: int = Field(..., description="Fit score 0-10 based on job description", ge=0, le=10)
-    opinion: str = Field(..., description="Short opinion on technical fit")
+
 
 # === State Definition ===
 class ChatState(TypedDict):
@@ -41,12 +30,7 @@ class ChatState(TypedDict):
     resume_data : str
 
 
-llm = ChatGroq(
-    model="llama-3.1-8b-instant",
-    api_key=GROQ_API_KEY,
-    temperature=0.7
-)
-llm_analyzer = llm.with_structured_output(schema=AnalyzeResumeSchema)
+
 
 
 
@@ -70,7 +54,7 @@ def query(state: ChatState) -> ChatState:
         ("human", "{user_question}")
     ])
 
-    chain = prompt | llm | StrOutputParser()
+    chain = prompt | chat_llm | StrOutputParser()
 
     response = chain.invoke({
         "analyzed_resume_data": state["analyzed_resume_data"],
@@ -112,7 +96,6 @@ if __name__ == "__main__":
     resume_analysis = analyze_resume(
         resume_data=resume_data,
         job_description=job_description,
-        llm_analyzer= llm.with_structured_output(schema=AnalyzeResumeSchema)
     )
 
     if not resume_data:
@@ -146,8 +129,8 @@ if __name__ == "__main__":
             # === Run Workflow (No Streaming) ===
             result = workflow.invoke(input_state, config=config)
             ai_message = result['messages'][-1]
-
+            
             print(f"\n[{thread_id}] AI :\n{ ai_message.content}\n")
-        
+
         except Exception as e:
             print(f"Error: {e}")

@@ -7,7 +7,9 @@ from langchain_community.document_loaders import (
     TextLoader
 )
 from langchain_core.prompts import ChatPromptTemplate
-
+from langchain_core.output_parsers import StrOutputParser
+from LLM_models import chat_llm , llm_resume_data_extractor
+from tenacity import retry , stop_after_attempt , wait_fixed
 
 def parse_file(file_path: str) -> str:
     """
@@ -44,8 +46,49 @@ def parse_file(file_path: str) -> str:
         print(f"Error loading {file_path}: {e}")
         return ""
     
+@retry(stop=stop_after_attempt(3), wait=wait_fixed(2))
+def extract_data_from_resume(resume_data: str) -> dict:
+    
+    # Define the extraction prompt
+    analysis_prompt = ChatPromptTemplate.from_messages([
+        ("system", """
+        You are a very skilled resume data extractor. Your job is to extract relevant details from resumes.
+        """),
 
-def analyze_resume(resume_data : str , job_description : str , llm_analyzer):
+        ("human", """
+        Please analyze the following resume and extract the information as per the provided schema.
+
+        # CANDIDATE RESUME
+        {resume_data}
+
+        Ensure that you extract the following details:
+
+        1. Total years of experience.
+        2. A list of all skills mentioned in the resume.
+        3. The candidate's email address (if mentioned).
+        4. The candidate's LinkedIn profile URL.
+        5. A summary of the candidate's education, including degrees, GPA (if available), and institution names.
+        6. A brief summary of the candidate's work experience.
+        7. A summary of notable projects, aside from work experience, that the candidate has worked on.
+        """)
+    ])
+
+    # Execute the chain and invoke
+    data_extraction_chain = analysis_prompt | llm_resume_data_extractor
+    result = data_extraction_chain.invoke(input={"resume_data": resume_data})
+
+    return  {
+            "email_address": result.email_address,  
+            "linkedin_url": result.linkedin_url,  
+            "total_experience": result.total_experience, 
+            "skills": result.skills, 
+            "education": result.education,  
+            "work_experience": result.work_experience,
+            "projects": result.projects
+        }
+    
+
+def analyze_resume(resume_data : str , job_description : str ):
 
     analysis_prompt = ChatPromptTemplate.from_messages([
     ("system", """
@@ -61,53 +104,24 @@ def analyze_resume(resume_data : str , job_description : str , llm_analyzer):
 
     # CANDIDATE RESUME
     {resume_data}
-
+    
     ---
 
     ## YOUR TASK: Perform a forensic-level resume-to-JD match analysis
+    
+    Once you have completely analyzed the resume of the user provided a short summary of what
+    data, insights you got from the data and an opinion on how well the candidate aligns with given job description. 
+    """)])
 
-    - Total Professional Experience (in years): Count only full-time, paid roles. Internships, projects, or education do not count unless explicitly full-time employment. Round down to nearest year.
-    - Explicitly Mentioned Technical & Soft Skills: List only skills **directly stated** in the resume. Do not infer from project descriptions or roles.
-    - AI opinion should to in a summarized version of what you think of the candidate profile.
-     
-     These are things based on provided a 50 to 80 word opinion paragraph
-     
-    From the Job Description**, extract and list:
-    - Required minimum years of experience
-    - Must-have skills (explicitly stated or strongly implied with words like "required", "must", "essential")
-    - Nice-to-have skills (mentioned but not mandatory)
+    analysis_chain = analysis_prompt | chat_llm | StrOutputParser()
+
+
+    analysis_result = analysis_chain.invoke(input={
+        "job_description":job_description,
+        "resume_data":resume_data
+    })
 
     
-    Score **only** on:
-    - Experience match 
-    - Must-have skill coverage 
-    - Bonus: Nice-to-have skills 
-    
-    **Formula:**
-     Score = (exp_match_pct × 0.4) + (must_have_match_pct × 0.5) + (nice_to_have_bonus × 0.1)
-    
-    You **must** choose one:
-    - **QUALIFY** → Only if:
-    1. Experience ≥ JD minimum
-    2. ≥75% of **must-have** skills are explicitly present in resume
-    3. Score ≥ 7.0
-    - **REJECT** → If any of the above fail
 
-     """)])
+    return analysis_result
 
-    analysis_result = llm_analyzer.invoke(analysis_prompt.format_messages(
-        job_description=job_description,
-        resume_data=resume_data
-    ))
-
-    # Create a detailed AI message with full analysis
-    analysis_message = f"""
-    ## Resume Analysis Complete
-
-    Total Experience: {analysis_result.total_experience} years  \n
-    Skills: {', '.join(analysis_result.skills)}  \n
-    Fit Score: {analysis_result.score}/10  \n
-    AI Opinion: {analysis_result.opinion} \n
-    """.strip()
-
-    return analysis_message

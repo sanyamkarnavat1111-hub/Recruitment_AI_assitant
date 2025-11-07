@@ -1,43 +1,21 @@
 from fastapi import FastAPI, File, Form, UploadFile, HTTPException, status
 from fastapi.responses import FileResponse, JSONResponse
 from fastapi.middleware.cors import CORSMiddleware
-from contextlib import asynccontextmanager
 import os
 import uvicorn
-from bot_graph import workflow, llm_analyzer
-from utils import parse_file, analyze_resume
+from bot_graph import workflow
 from langchain_core.messages import HumanMessage
 import logging
-import asyncio
 import tempfile
-from typing import Dict, AsyncGenerator
+from utils import parse_file, extract_data_from_resume , analyze_resume
+from database import insert_extracted_data , get_thread_data
+
 
 # ====================== Logging Setup ======================
 logging.basicConfig(level=logging.INFO)
 logger = logging.getLogger(__name__)
 
-# In-memory thread store (only parsed data + analysis)
-thread_store: Dict[str, Dict] = {}
-
-
-# ====================== Lifespan (Startup + Shutdown) ======================
-@asynccontextmanager
-async def lifespan(app: FastAPI) -> AsyncGenerator:
-    # --- Startup ---
-    logger.info("Application starting up...")
-    asyncio.create_task(periodic_health_check())
-    logger.info("Periodic internal health check started (every 30s).")
-
-    yield  # App runs here
-
-    # --- Shutdown ---
-    logger.info("Application shutting down... Clearing thread store.")
-    thread_store.clear()
-    logger.info("Cleanup complete.")
-
-
-# ====================== FastAPI App with Lifespan ======================
-app = FastAPI(title="RecruitmentAI", lifespan=lifespan)
+app = FastAPI(title="RecruitmentAI")
 
 app.add_middleware(
     CORSMiddleware,
@@ -49,18 +27,6 @@ app.add_middleware(
 
 STATIC = "static"
 os.makedirs(STATIC, exist_ok=True)
-
-
-# ====================== Background Health Checker ======================
-async def periodic_health_check():
-    """Internal task that calls /health every 30 seconds."""
-    while True:
-        try:
-            health_response = health_check()
-            logger.info(f"[INTERNAL HEALTH CHECK] {health_response}")
-        except Exception as e:
-            logger.error(f"[INTERNAL HEALTH CHECK FAILED] {str(e)}")
-        await asyncio.sleep(30)
 
 
 # ====================== Homepage ======================
@@ -84,30 +50,12 @@ def homepage():
         )
 
 
-# ====================== Helper: Validate File ======================
-def validate_upload_file(file: UploadFile, field_name: str):
-    if not file or not file.filename:
-        return None
-    allowed_extensions = {".pdf", ".docx", ".txt"}
-    ext = os.path.splitext(file.filename)[1].lower()
-    if ext not in allowed_extensions:
-        raise HTTPException(
-            status_code=status.HTTP_400_BAD_REQUEST,
-            detail=f"Invalid file type for {field_name}. Allowed: {', '.join(allowed_extensions)}"
-        )
-    if file.size > 10 * 1024 * 1024:  # 10 MB limit
-        raise HTTPException(
-            status_code=status.HTTP_413_REQUEST_ENTITY_TOO_LARGE,
-            detail=f"{field_name} exceeds 10MB limit."
-        )
-    return ext
-
 
 # ====================== Upload Endpoint (Temp File → Parse → Delete) ======================
 @app.post("/upload")
 async def upload_files(
-    resume_file: UploadFile = File(None),
-    job_description_file: UploadFile = File(None),
+    resume_file: UploadFile = File(...),          # <-- required
+    job_description_file: UploadFile = File(...), # <-- required
     thread_id: str = Form(...),
 ):
     if not thread_id or not thread_id.strip():
@@ -116,116 +64,153 @@ async def upload_files(
             detail="thread_id is required and cannot be empty."
         )
 
-    # Initialize thread
-    if thread_id not in thread_store:
-        thread_store[thread_id] = {
-            "resume_data": None,
-            "jd_data": None,
-            "analysis": None,
-            "files_uploaded": False
-        }
-
-    thread = thread_store[thread_id]
+    # ------------------------------------------------------------------
+    # 1. Initialise tracking variables
+    # ------------------------------------------------------------------
     success = {"resume": False, "job_description": False}
+    temp_resume_path: str | None = None
+    temp_jd_path: str | None = None
 
-    # Temp file paths to delete later
-    temp_resume_path = None
-    temp_jd_path = None
+    resume_data: str | None = None
+    job_description_data: str | None = None
 
     try:
-        # ---------- Resume ----------
-        if resume_file and resume_file.filename:
-            ext = validate_upload_file(resume_file, "resume")
-            if not ext:
-                return JSONResponse({
-                    "success": False,
-                    "uploaded": success,
-                    "both_uploaded": False,
-                    "analysis": None,
-                    "error": "Resume file is invalid or missing."
-                })
+        # ------------------------------------------------------------------
+        # 2. RESUME
+        # ------------------------------------------------------------------
+        if not resume_file.filename:
+            raise HTTPException(
+                status_code=status.HTTP_400_BAD_REQUEST,
+                detail="Resume file is required but no filename was sent."
+            )
 
-            contents = await resume_file.read()
-            if not contents:
-                raise ValueError("Resume file is empty.")
+        ext = resume_file.filename.rsplit(".", 1)[-1].lower()
+        if ext not in {"pdf", "txt", "docx"}:
+            raise HTTPException(
+                status_code=status.HTTP_400_BAD_REQUEST,
+                detail=f"Unsupported resume file type: .{ext}"
+            )
 
-            # Save to temp file
-            temp_file = tempfile.NamedTemporaryFile(delete=False, suffix=ext)
-            temp_file.write(contents)
-            temp_file.close()
-            temp_resume_path = temp_file.name
+        raw_bytes = await resume_file.read()
+        if not raw_bytes:
+            raise ValueError("Resume file is empty.")
 
-            # Parse using existing parse_file(path)
-            resume_data = parse_file(temp_resume_path)
-            thread["resume_data"] = resume_data
-            success["resume"] = True
-            logger.info(f"Resume parsed from temp file for thread {thread_id}")
+        # ---- write to a real temp file (loader needs a path) ----
+        temp_file = tempfile.NamedTemporaryFile(delete=False, suffix=f".{ext}")
+        temp_file.write(raw_bytes)
+        temp_file.close()
+        temp_resume_path = temp_file.name
 
-            # Delete immediately after parsing
-            if os.path.exists(temp_resume_path):
-                os.unlink(temp_resume_path)
-                logger.info(f"Deleted temp resume file: {temp_resume_path}")
-            temp_resume_path = None  # Prevent double delete
+        logger.info(f"[THREAD {thread_id}] Resume temp file created: {temp_resume_path}")
 
-        # ---------- Job Description ----------
-        if job_description_file and job_description_file.filename:
-            ext = validate_upload_file(job_description_file, "job description")
-            if not ext:
-                return JSONResponse({
-                    "success": False,
-                    "uploaded": success,
-                    "both_uploaded": False,
-                    "analysis": None,
-                    "error": "Job description file is invalid or missing."
-                })
+        # ---- parse -------------------------------------------------
+        resume_data = parse_file(temp_resume_path)
+        success["resume"] = True
+        logger.info(f"[THREAD {thread_id}] Resume parsed successfully (len={len(resume_data)} chars)")
 
-            contents = await job_description_file.read()
-            if not contents:
-                raise ValueError("Job description file is empty.")
+        # ---- delete ------------------------------------------------
+        if os.path.exists(temp_resume_path):
+            os.unlink(temp_resume_path)
+            logger.info(f"[THREAD {thread_id}] Deleted resume temp file: {temp_resume_path}")
+        temp_resume_path = None
 
-            # Save to temp file
-            temp_file = tempfile.NamedTemporaryFile(delete=False, suffix=ext)
-            temp_file.write(contents)
-            temp_file.close()
-            temp_jd_path = temp_file.name
+        # ------------------------------------------------------------------
+        # 3. JOB DESCRIPTION
+        # ------------------------------------------------------------------
+        if not job_description_file.filename:
+            raise HTTPException(
+                status_code=status.HTTP_400_BAD_REQUEST,
+                detail="Job-description file is required but no filename was sent."
+            )
 
-            # Parse
-            jd_data = parse_file(temp_jd_path)
-            thread["jd_data"] = jd_data
-            success["job_description"] = True
-            logger.info(f"JD parsed from temp file for thread {thread_id}")
+        ext = job_description_file.filename.rsplit(".", 1)[-1].lower()
+        if ext not in {"pdf", "txt", "docx"}:
+            raise HTTPException(
+                status_code=status.HTTP_400_BAD_REQUEST,
+                detail=f"Unsupported JD file type: .{ext}"
+            )
 
-            # Delete immediately
-            if os.path.exists(temp_jd_path):
-                os.unlink(temp_jd_path)
-                logger.info(f"Deleted temp JD file: {temp_jd_path}")
-            temp_jd_path = None
+        raw_bytes = await job_description_file.read()
+        if not raw_bytes:
+            raise ValueError("Job-description file is empty.")
 
-        # ---------- Run analysis when both parsed ----------
-        if thread["resume_data"] and thread["jd_data"] and thread["analysis"] is None:
-            try:
-                logger.info(f"Starting analysis for thread {thread_id}")
-                thread["analysis"] = analyze_resume(
-                    resume_data=thread["resume_data"],
-                    job_description=thread["jd_data"],
-                    llm_analyzer=llm_analyzer
-                )
-                thread["files_uploaded"] = True
-                logger.info(f"Analysis completed for thread {thread_id}")
-            except Exception as e:
-                logger.error(f"Analysis failed for thread {thread_id}: {str(e)}")
-                thread["analysis"] = None
-                thread["files_uploaded"] = False
-                raise HTTPException(
-                    status_code=status.HTTP_500_INTERNAL_SERVER_ERROR,
-                    detail=f"Resume analysis failed: {str(e)}"
-                )
+        temp_file = tempfile.NamedTemporaryFile(delete=False, suffix=f".{ext}")
+        temp_file.write(raw_bytes)
+        temp_file.close()
+        temp_jd_path = temp_file.name
+
+        logger.info(f"[THREAD {thread_id}] JD temp file created: {temp_jd_path}")
+
+        job_description_data = parse_file(temp_jd_path)
+        success["job_description"] = True
+        logger.info(f"[THREAD {thread_id}] JD parsed successfully (len={len(job_description_data)} chars)")
+
+        if os.path.exists(temp_jd_path):
+            os.unlink(temp_jd_path)
+            logger.info(f"[THREAD {thread_id}] Deleted JD temp file: {temp_jd_path}")
+        temp_jd_path = None
+
+        
+        try:
+            logger.info(f"Starting Data extraction and analysis for thread {thread_id}")
+
+
+            extracted_resume_data = extract_data_from_resume(
+                resume_data=resume_data,
+            )
+
+            logger.info(f"Extraction completed for thread {thread_id}")
+
+            
+
+            analysis = analyze_resume(
+                resume_data=resume_data,
+                job_description=job_description_data
+            )
+            logger.info(f"Analysis completed for thread {thread_id}")
+
+
+            
+            # Insert the extracted data from resume and analysis 
+
+            email_address = extracted_resume_data.get("email_address", "")
+            linkedin_url = extracted_resume_data.get("linkedin_url", "")
+            total_experience = int(extracted_resume_data.get("total_experience", 0))
+            skills = extracted_resume_data.get("skills", [])
+            education = extracted_resume_data.get("education", "")
+            work_experience = extracted_resume_data.get("work_experience", "")
+            projects = extracted_resume_data.get("projects", "")
+
+            
+            insert_extracted_data(
+                thread_id= thread_id,
+                email_address= email_address,
+                linkedin_url=linkedin_url,
+                total_experience=total_experience,
+                skills=skills,
+                education=education,
+                work_experience=work_experience,
+                projects=projects,
+                analysis=analysis,
+                resume_data=resume_data,
+                job_description_data=job_description_data
+            )
+
+            logger.info("Extracted resume data and analysis saved ")
+            
+        except Exception as e:
+            logger.error(f"Analysis failed for thread {thread_id}: {str(e)}")
+            
+            raise HTTPException(
+                status_code=status.HTTP_500_INTERNAL_SERVER_ERROR,
+                detail=f"Resume analysis failed: {str(e)}"
+            )
 
         return JSONResponse({
             "success": True,
             "uploaded": success,
-            "both_uploaded": thread["files_uploaded"],
-            "analysis": thread["analysis"]
+            "both_uploaded": True,
+            "analysis": analysis
         })
 
     except HTTPException:
@@ -256,39 +241,45 @@ async def upload_files(
         }, status_code=status.HTTP_500_INTERNAL_SERVER_ERROR)
 
 
-# ====================== Query Endpoint ======================
-@app.post("/query")
-async def answer_query(
-    thread_id: str = Form(...),
-    query: str = Form(...),
+
+@app.post('/query')
+def answer_query(
+    thread_id : str = Form(...),
+    query : str = Form(...)
 ):
-    if not thread_id or not thread_id.strip():
-        raise HTTPException(status_code=400, detail="thread_id is required.")
-    if not query or not query.strip():
-        raise HTTPException(status_code=400, detail="Query cannot be empty.")
-    if thread_id not in thread_store:
-        raise HTTPException(status_code=404,  detail="Thread not found. Please upload files first.")
-    if not thread_store[thread_id]["files_uploaded"]:
-        raise HTTPException(status_code=400, detail="Both files must be uploaded and analyzed first.")
+    
+    # check if thread id is present or not in database
+    thread_id_data = get_thread_data(thread_id=thread_id)
 
-    thread = thread_store[thread_id]
-    config = {"configurable": {"thread_id": thread_id}}
-    input_state = {
-        "messages": [HumanMessage(content=query)],
-        "conversation_thread": thread_id,
-        "analyzed_resume_data": thread["analysis"],
-        "job_description": thread["jd_data"],
-        "resume_data": thread["resume_data"]
-    }
+    if thread_id_data:
+        # If thread exists then get the resume data and job description
+        analyzed_resume_data = thread_id[-3] 
+        resume_data = thread_id_data[-2]
+        job_description_data = thread_id_data[-1]
+        
+        config = {"configurable": {"thread_id": thread_id}}
+        input_state = {
+            "messages": [HumanMessage(content=query)],
+            "conversation_thread": thread_id,
+            "analyzed_resume_data": analyzed_resume_data,
+            "job_description":job_description_data,
+            "resume_data": resume_data
+        }
 
-    try:
-        result = workflow.invoke(input_state, config=config)
-        ai_message = result["messages"][-1]
-        response_content = ai_message.content or "No response generated."
-        return JSONResponse({"response": response_content})
-    except Exception as e:
-        logger.error(f"Query failed: {str(e)}")
-        raise HTTPException(status_code=500, detail=f"Query processing failed: {str(e)}")
+        try:
+            result = workflow.invoke(input_state, config=config)
+            ai_message = result["messages"][-1]
+            response_content = ai_message.content or "No response generated."
+            return JSONResponse({"response": response_content})
+        except Exception as e:
+            logger.error(f"Query failed: {str(e)}")
+            raise HTTPException(status_code=500, detail=f"Query processing failed: {str(e)}")
+
+        
+    else:
+         raise HTTPException(status_code=400, detail="thread_id is required.")
+    
+
 
 
 # ====================== Health Check ======================
@@ -296,8 +287,6 @@ async def answer_query(
 def health_check():
     return {
         "status": "healthy",
-        "threads_active": len(thread_store),
-        "disk_usage": "minimal (temp files deleted immediately)"
     }
 
 
