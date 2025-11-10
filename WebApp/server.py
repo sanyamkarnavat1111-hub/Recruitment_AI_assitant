@@ -4,11 +4,11 @@ from fastapi.middleware.cors import CORSMiddleware
 import os
 import uvicorn
 from bot_graph import workflow
-from langchain_core.messages import HumanMessage
+from langchain_core.messages import HumanMessage, AIMessage
 import logging
 import tempfile
-from utils import parse_file, extract_data_from_resume , analyze_resume
-from database_sqlite import insert_extracted_data , get_thread_data , test_connection , drop_table , create_table
+from utils import parse_file, extract_data_from_resume, analyze_resume
+from database_sqlite import insert_extracted_data, get_thread_data, test_connection, drop_table, create_table
 from typing import List
 
 # ====================== Logging Setup ======================
@@ -50,11 +50,10 @@ def homepage():
         )
 
 
-
-# ====================== Upload Endpoint (Temp File → Parse → Delete) ======================
+# ====================== Upload Endpoint (Initialize Thread State) ======================
 @app.post("/upload")
 async def upload_files(
-    resume_files: List[UploadFile] = File(..., description="Multiple resume files"),          
+    resume_files: List[UploadFile] = File(..., description="Multiple resume files"),
     job_description_file: UploadFile = File(..., description="Single job description file"),
     thread_id: str = Form(...),
 ):
@@ -85,8 +84,8 @@ async def upload_files(
     processed_count = 0
     failed_analyses = []
 
+    logger.info(f"Upload started for thread: {thread_id}")
 
-    logger.info("Upload started ... ")
     try:
         # ------------------------------------------------------------------
         # 2. PROCESS JOB DESCRIPTION FIRST
@@ -120,16 +119,17 @@ async def upload_files(
         temp_jd_path = None
 
         # ------------------------------------------------------------------
-        # 3. PROCESS EACH RESUME: PARSE → EXTRACT → ANALYZE → STORE → CLEANUP
+        # 3. PROCESS EACH RESUME
         # ------------------------------------------------------------------
+        all_analysis_data = ""
+
         for idx, resume_file in enumerate(resume_files):
             if not resume_file.filename:
-                continue  # Skip empty entries
+                continue
 
             temp_resume_path: str | None = None
 
             try:
-                # Validate file type
                 ext = resume_file.filename.rsplit(".", 1)[-1].lower()
                 if ext not in {"pdf", "txt", "docx"}:
                     raise HTTPException(
@@ -137,7 +137,6 @@ async def upload_files(
                         detail=f"Unsupported resume file type: .{ext} in file '{resume_file.filename}'"
                     )
 
-                # Read and save to temp file
                 raw_bytes = await resume_file.read()
                 if not raw_bytes:
                     logger.warning(f"[THREAD {thread_id}] Resume {idx} is empty: {resume_file.filename}")
@@ -155,18 +154,16 @@ async def upload_files(
 
                 logger.info(f"[THREAD {thread_id}] Resume {idx} temp file: {temp_resume_path}")
 
-                # Parse the resume
+                # Parse resume
                 parsed_text = parse_file(temp_resume_path)
-                logger.info(f"[THREAD {thread_id}] Resume {idx} parsed: {resume_file.filename} ({len(parsed_text)} chars)")
+                logger.info(f"[THREAD {thread_id}] Resume {idx} parsed: {resume_file.filename}")
 
-                # Extract data from resume
+                # Extract data
                 extracted_resume_data = extract_data_from_resume(resume_data=parsed_text)
                 logger.info(f"[THREAD {thread_id}] Resume {idx} data extracted")
 
-                
-
-                # Extract fields for DB insertion
-                candidate_name = extracted_resume_data.get("candidate_name","")
+                # Extract fields for DB
+                candidate_name = extracted_resume_data.get("candidate_name", "")
                 email_address = extracted_resume_data.get("email_address", "")
                 linkedin_url = extracted_resume_data.get("linkedin_url", "")
                 total_experience = int(extracted_resume_data.get("total_experience", 0))
@@ -175,8 +172,7 @@ async def upload_files(
                 work_experience = extracted_resume_data.get("work_experience", "")
                 projects = extracted_resume_data.get("projects", "")
 
-
-                # Analyze resume against job description
+                # Analyze resume
                 analysis_result = analyze_resume(
                     extracted_resume_data=extracted_resume_data,
                     job_description=job_description_data
@@ -185,12 +181,15 @@ async def upload_files(
                 fit_score = analysis_result['fit_score']
                 analysis_summary = analysis_result['analysis_summary']
 
-
                 logger.info(f"[THREAD {thread_id}] Resume {idx} analysis completed")
 
+                # Build analysis string for state
+                all_analysis_data += f"""
+                ANALYSIS :- {analysis_summary}
+                FITSCORE :- {fit_score}
+                """ + "\n"
 
-
-                # Insert into database
+                # Insert into DB
                 insert_extracted_data(
                     thread_id=thread_id,
                     candidate_name=candidate_name,
@@ -201,7 +200,7 @@ async def upload_files(
                     education=education,
                     work_experience=work_experience,
                     projects=projects,
-                    job_description = job_description_data,
+                    job_description=job_description_data,
                     fit_score=fit_score,
                     analysis=analysis_summary
                 )
@@ -212,11 +211,11 @@ async def upload_files(
                     "parsed": True,
                     "length": len(parsed_text)
                 })
-                logger.info(f"[THREAD {thread_id}] Resume {idx} ({resume_file.filename}) saved to DB")
+                logger.info(f"[THREAD {thread_id}] Resume {idx} saved to DB")
 
             except Exception as e:
                 error_msg = str(e)
-                logger.error(f"[THREAD {thread_id}] Failed to process resume {idx} ({resume_file.filename}): {error_msg}")
+                logger.error(f"[THREAD {thread_id}] Failed resume {idx}: {error_msg}")
                 success["resumes"].append({
                     "filename": resume_file.filename,
                     "parsed": False,
@@ -229,19 +228,35 @@ async def upload_files(
                 })
 
             finally:
-                # Cleanup temp file immediately after processing
                 if temp_resume_path and os.path.exists(temp_resume_path):
                     os.unlink(temp_resume_path)
-                    logger.info(f"[THREAD {thread_id}] Deleted resume temp file: {temp_resume_path}")
+                    logger.info(f"[THREAD {thread_id}] Deleted resume temp file")
 
-        # Check if at least one resume was processed successfully
+        # ------------------------------------------------------------------
+        # 4. Validate & Initialize LangGraph State ONCE
+        # ------------------------------------------------------------------
         if processed_count == 0:
             raise HTTPException(
                 status_code=status.HTTP_400_BAD_REQUEST,
                 detail="No resumes were successfully processed."
             )
 
-        logger.info(f"Successfully processed {processed_count}/{len(resume_files)} resumes for thread {thread_id}")
+        config = {"configurable": {"thread_id": thread_id}}
+
+        # Initialize state only once
+        initial_state = {
+            "messages": [],
+            "analyzed_resume_data": all_analysis_data.strip(),
+            "job_description": job_description_data,
+        }
+
+        # Save to LangGraph memory
+        workflow.update_state(
+            config=config,
+            values=initial_state
+        )
+
+        logger.info(f"[THREAD {thread_id}] LangGraph state initialized with {processed_count} resumes")
 
         return JSONResponse({
             "success": True,
@@ -254,11 +269,9 @@ async def upload_files(
         })
 
     except HTTPException:
-        # Cleanup JD temp file if still exists
         if temp_jd_path and os.path.exists(temp_jd_path):
             try:
                 os.unlink(temp_jd_path)
-                logger.info(f"Cleaned up JD temp file on error: {temp_jd_path}")
             except:
                 pass
         raise
@@ -277,60 +290,54 @@ async def upload_files(
         }, status_code=status.HTTP_500_INTERNAL_SERVER_ERROR)
 
 
+# ====================== Query Endpoint (Uses Persisted State) ======================
 @app.post('/query')
 def answer_query(
-    thread_id : str = Form(...),
-    query : str = Form(...)
+    thread_id: str = Form(...),
+    query: str = Form(...)
 ):
     try:
-        # check if thread id is present or not in database
-        thread_id_data = get_thread_data(thread_id=thread_id)
+        config = {"configurable": {"thread_id": thread_id}}
 
+        # Check if thread state exists in LangGraph memory
+        saved_state = workflow.checkpointer.get(config)
+        if not saved_state:
+            raise HTTPException(
+                status_code=status.HTTP_404_NOT_FOUND,
+                detail="Thread not found. Please upload resumes and job description first."
+            )
         
-        if thread_id_data:
-            # If thread exists then get the analysis , fit score and job description.
-            job_description = thread_id_data[0][-3]
+        # Only send the new user message
+        input_state = {
+            "messages": [HumanMessage(content=query)]
+        }
+        
+        # LangGraph loads previous state (analyzed_resume_data, job_description) automatically
+        result = workflow.invoke(input_state, config=config)
 
-
-            all_analysis_data = """"""
-
-            for data in thread_id_data:
-                fitscore = data[-2]
-                analysis = data[-1]
-
-                all_analysis_data += "\n" + f"""
-                ANALYSIS :- {analysis}
-
-                FITSCORE :- {fitscore}
-                """ + "\n"
-            
-            config = {"configurable": {"thread_id": thread_id}}
-            input_state = {
-                "messages": [HumanMessage(content=query)],
-                "analyzed_resume_data": all_analysis_data,
-                "job_description":job_description,
-            }
-
-            
-            result = workflow.invoke(input_state, config=config)
-            ai_message = result["messages"][-1]
-            response_content = ai_message.content or "No response generated."
-            return JSONResponse({"response": response_content})
-            
-            
+        # Get AI response
+        ai_message = result["messages"][-1]
+        if isinstance(ai_message, AIMessage):
+            response_content = ai_message.content
         else:
-            raise HTTPException(status_code=400, detail="thread_id is required.")
-    except Exception as e :
-        logger.error(f"Query failed: {str(e)}")
+            response_content = str(ai_message)
 
+        return JSONResponse({"response": response_content or "No response generated."})
+
+    except HTTPException:
+        raise
+    except Exception as e:
+        logger.error(f"Query failed for thread {thread_id}: {str(e)}")
+        raise HTTPException(
+            status_code=status.HTTP_500_INTERNAL_SERVER_ERROR,
+            detail="Failed to process query."
+        )
 
 
 # ====================== Health Check ======================
 @app.get("/health")
 def health_check():
-    return {
-        "status": "healthy",
-    }
+    return {"status": "healthy"}
 
 
 # ====================== Run Server ======================
@@ -342,9 +349,9 @@ if __name__ == "__main__":
     logger.info(f"Starting server on port {port}")
     
     uvicorn.run(
-    "server:app",
-    host="0.0.0.0",
-    port=port,
-    reload=False,
-    log_level="info"  # This enables Uvicorn logs
-)
+        "server:app",
+        host="0.0.0.0",
+        port=port,
+        reload=False,
+        log_level="info"
+    )

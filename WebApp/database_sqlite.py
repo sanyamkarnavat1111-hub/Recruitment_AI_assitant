@@ -1,9 +1,12 @@
 import sqlite3
+import os
 from dotenv import load_dotenv
 
 load_dotenv()
 
-DB_PATH = "Users.db"
+DB_DIR = "Database"
+os.makedirs(DB_DIR , exist_ok=True)
+DB_PATH = f"{DB_DIR}/Users.db"
 
 
 def get_db_connection():
