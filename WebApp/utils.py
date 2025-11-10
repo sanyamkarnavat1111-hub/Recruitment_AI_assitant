@@ -8,7 +8,7 @@ from langchain_community.document_loaders import (
 )
 from langchain_core.prompts import ChatPromptTemplate
 from langchain_core.output_parsers import StrOutputParser
-from LLM_models import chat_llm , llm_resume_data_extractor , llm_sentiment_analyzer
+from LLM_models import chat_llm , llm_resume_data_extractor , llm_sentiment_analyzer , llm_resume_analysis
 from typing import Literal
 from tenacity import retry , stop_after_attempt , wait_fixed
 
@@ -90,7 +90,6 @@ def extract_data_from_resume(resume_data: str) -> dict:
         }
 
 
-
 def classify_query(query: str) -> Literal["hr", "general"]:
     prompt = ChatPromptTemplate.from_template(
         """
@@ -113,40 +112,75 @@ def classify_query(query: str) -> Literal["hr", "general"]:
     return result
     
 
-def analyze_resume(resume_data : str , job_description : str ):
+def analyze_resume(extracted_resume_data: dict, job_description: str):
+    # Extract data from the resume dictionary
+    candidate_name = extracted_resume_data.get("candidate_name", "")
+    email_address = extracted_resume_data.get("email_address", "")
+    linkedin_url = extracted_resume_data.get("linkedin_url", "")
+    total_experience = int(extracted_resume_data.get("total_experience", 0))
+    skills = extracted_resume_data.get("skills", [])
+    education = extracted_resume_data.get("education", "")
+    work_experience = extracted_resume_data.get("work_experience", "")
+    projects = extracted_resume_data.get("projects", "")
 
+    # Format the extracted resume data into a structured string for the model
+    formatted_extracted_data = f"""
+    # Candidate Information:
+    - Name: {candidate_name}
+    - Email: {email_address}
+    - LinkedIn: {linkedin_url}
+    # Total Experience:
+    - {total_experience} years
+
+    # Skills:
+    - {', '.join(skills) if skills else "None provided"}
+
+    # Education:
+    - {education if education else "No education details provided"}
+
+    # Work Experience:
+    - {work_experience if work_experience else "No work experience provided"}
+
+    # Projects:
+    - {projects if projects else "No project details provided"}
+    """
+
+    # Create the prompt for the language model
     analysis_prompt = ChatPromptTemplate.from_messages([
-    ("system", """
-    You are a senior technical recruiter and resume screening expert and veteran in high-volume hiring for Fortune 500 companies. 
-    You are extremely rigorous, data-driven, and unflinchingly honest in your evaluation. 
-    Never sugarcoat weaknesses. Never assume unstated skills. 
-    Only evaluate based on explicit evidence in the resume and job description.
-    """),
+        ("system", """
+        You are a senior technical recruiter and resume screening expert, with extensive experience in high-volume hiring for Fortune 500 companies. 
+        You are extremely rigorous, data-driven, and unflinchingly honest in your evaluation. 
+        Never sugarcoat weaknesses and never assume unstated skills. 
+        Only evaluate based on explicit evidence in the resume and job description.
+        """),
 
-    ("human", """
-    # JOB DESCRIPTION
-    {job_description}
+        ("human", f"""
+        # JOB DESCRIPTION
+        {job_description}
 
-    # CANDIDATE RESUME
-    {resume_data}
-    
-    ---
+        # EXTRACTED RESUME DATA
+        {formatted_extracted_data}
 
-    ## YOUR TASK: Perform a forensic-level resume-to-JD match analysis
-    
-    Once you have completely analyzed the resume of the user provide a short summary of what
-    data, insights you got from the data and an opinion on how well the candidate aligns with given job description. 
-    """)])
+        ## YOUR TASK:
+        1. Perform a forensic-level analysis of the extracted resume data against the job description.
+        2. Calculate a fit score from 0 to 100 based on how well the candidate aligns with the job requirements.
+        3. Provide a short summary of your analysis, detailing the specific criteria and reasoning you used to evaluate the candidate.
+        4. Conclude with a brief opinion on how well the candidate fits the job.
+        """)
+    ])
 
-    analysis_chain = analysis_prompt | chat_llm | StrOutputParser()
+    # Run the analysis
+    analysis_chain = analysis_prompt | llm_resume_analysis
 
-
+    # Invoke the analysis and extract the result
     analysis_result = analysis_chain.invoke(input={
-        "job_description":job_description,
-        "resume_data":resume_data
+        "job_description": job_description,
+        "extracted_resume_data": formatted_extracted_data
     })
 
-    
-
-    return analysis_result
+    # Return the analysis results
+    return {
+        "fit_score": analysis_result.fit_score,
+        "analysis_summary": analysis_result.analysis_summary
+    }
 

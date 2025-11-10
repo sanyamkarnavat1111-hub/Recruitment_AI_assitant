@@ -46,9 +46,8 @@ def create_table():
                     education VARCHAR(10000),
                     work_experience VARCHAR(10000),
                     projects VARCHAR(10000),
-                    analysis VARCHAR(10000),
-                    resume_data VARCHAR(20000),
-                    job_description_data VARCHAR(20000)
+                    fit_score SMALLINT NOT NULL,
+                    analysis VARCHAR(10000)
                 )
             ''')
         conn.commit()
@@ -82,9 +81,8 @@ def insert_extracted_data(
     education: str,
     work_experience: str,
     projects: str,
+    fit_score : int,
     analysis: str,
-    resume_data : str,
-    job_description_data : str
 ):
     
     conn = get_db_connection()
@@ -94,16 +92,15 @@ def insert_extracted_data(
             insert_query = '''
                 INSERT INTO users (
                     thread_id, candidate_name , email_address, 
-                    linkedin_url,total_experience, skills,
-                    education, work_experience, projects, analysis , resume_data , job_description_data
+                    linkedin_url,total_experience, skills, education, work_experience, 
+                    projects, fit_score ,analysis
                 )
-                VALUES (%s, %s, %s, %s, %s, %s, %s, %s, %s , %s , %s , %s)
+                VALUES (%s, %s, %s, %s, %s, %s, %s, %s, %s , %s , %s)
             '''
             values = (
                 thread_id, candidate_name , email_address, linkedin_url,
-                total_experience, skills,
-                education, work_experience, projects, analysis,
-                resume_data , job_description_data
+                total_experience, skills, education, work_experience, projects, 
+                fit_score,analysis
             )
             cur.execute(insert_query, values)
         conn.commit()
@@ -132,7 +129,7 @@ def get_all_data():
     conn = get_db_connection()
     try:
         with conn.cursor() as cur:
-            cur.execute("SELECT * FROM users")
+            cur.execute("SELECT fit_score , analysis FROM users")
             data = cur.fetchall()
             return data
     except Exception as e:
@@ -162,4 +159,8 @@ if __name__ == "__main__":
     # drop_table()
     # create_table()
     # truncate()
-    print(get_all_data())
+    for row in get_all_data():
+        print("-"*100)
+        print("Fit score :-" , row[-2])
+        print("Analysis summary :- " ,row[-1])
+        print("\n\n")

@@ -8,7 +8,7 @@ from langchain_core.messages import HumanMessage
 import logging
 import tempfile
 from utils import parse_file, extract_data_from_resume , analyze_resume
-from database import insert_extracted_data , get_thread_data , test_connection , drop_table , create_table
+from database_sqlite import insert_extracted_data , get_thread_data , test_connection , drop_table , create_table
 from typing import List
 
 # ====================== Logging Setup ======================
@@ -163,12 +163,7 @@ async def upload_files(
                 extracted_resume_data = extract_data_from_resume(resume_data=parsed_text)
                 logger.info(f"[THREAD {thread_id}] Resume {idx} data extracted")
 
-                # Analyze resume against job description
-                analysis = analyze_resume(
-                    resume_data=parsed_text,
-                    job_description=job_description_data
-                )
-                logger.info(f"[THREAD {thread_id}] Resume {idx} analysis completed")
+                
 
                 # Extract fields for DB insertion
                 candidate_name = extracted_resume_data.get("candidate_name","")
@@ -179,6 +174,21 @@ async def upload_files(
                 education = extracted_resume_data.get("education", "")
                 work_experience = extracted_resume_data.get("work_experience", "")
                 projects = extracted_resume_data.get("projects", "")
+
+
+                # Analyze resume against job description
+                analysis_result = analyze_resume(
+                    extracted_resume_data=extracted_resume_data,
+                    job_description=job_description_data
+                )
+
+                fit_score = analysis_result['fit_score']
+                analysis_summary = analysis_result['analysis_summary']
+
+
+                logger.info(f"[THREAD {thread_id}] Resume {idx} analysis completed")
+
+
 
                 # Insert into database
                 insert_extracted_data(
@@ -191,9 +201,9 @@ async def upload_files(
                     education=education,
                     work_experience=work_experience,
                     projects=projects,
-                    analysis=analysis,
-                    resume_data=parsed_text,
-                    job_description_data=job_description_data
+                    job_description = job_description_data,
+                    fit_score=fit_score,
+                    analysis=analysis_summary
                 )
 
                 processed_count += 1
@@ -272,38 +282,46 @@ def answer_query(
     thread_id : str = Form(...),
     query : str = Form(...)
 ):
-    
-    # check if thread id is present or not in database
-    thread_id_data = get_thread_data(thread_id=thread_id)
+    try:
+        # check if thread id is present or not in database
+        thread_id_data = get_thread_data(thread_id=thread_id)
 
-    if thread_id_data:
-        # If thread exists then get the resume data and job description
-        analyzed_resume_data = thread_id[-3] 
-        resume_data = thread_id_data[-2]
-        job_description_data = thread_id_data[-1]
         
-        config = {"configurable": {"thread_id": thread_id}}
-        input_state = {
-            "messages": [HumanMessage(content=query)],
-            "conversation_thread": thread_id,
-            "analyzed_resume_data": analyzed_resume_data,
-            "job_description":job_description_data,
-            "resume_data": resume_data
-        }
+        if thread_id_data:
+            # If thread exists then get the analysis , fit score and job description.
+            job_description = thread_id_data[0][-3]
 
-        try:
+
+            all_analysis_data = """"""
+
+            for data in thread_id_data:
+                fitscore = data[-2]
+                analysis = data[-1]
+
+                all_analysis_data += "\n" + f"""
+                ANALYSIS :- {analysis}
+
+                FITSCORE :- {fitscore}
+                """ + "\n"
+            
+            config = {"configurable": {"thread_id": thread_id}}
+            input_state = {
+                "messages": [HumanMessage(content=query)],
+                "analyzed_resume_data": all_analysis_data,
+                "job_description":job_description,
+            }
+
+            
             result = workflow.invoke(input_state, config=config)
             ai_message = result["messages"][-1]
             response_content = ai_message.content or "No response generated."
             return JSONResponse({"response": response_content})
-        except Exception as e:
-            logger.error(f"Query failed: {str(e)}")
-            raise HTTPException(status_code=500, detail=f"Query processing failed: {str(e)}")
-
-        
-    else:
-         raise HTTPException(status_code=400, detail="thread_id is required.")
-    
+            
+            
+        else:
+            raise HTTPException(status_code=400, detail="thread_id is required.")
+    except Exception as e :
+        logger.error(f"Query failed: {str(e)}")
 
 
 

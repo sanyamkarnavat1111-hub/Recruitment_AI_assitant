@@ -1,5 +1,5 @@
 from langchain_groq import ChatGroq
-from LLM_shcemas import ExtractResumeDataSchema , ClassifyQuery
+from LLM_shcemas import ExtractResumeDataSchema , ClassifyQuery , ResumeAnalysis
 from dotenv import load_dotenv
 import os
 
@@ -18,3 +18,5 @@ chat_llm = ChatGroq(
 
 llm_resume_data_extractor = chat_llm.with_structured_output(schema=ExtractResumeDataSchema)
 llm_sentiment_analyzer = chat_llm.with_structured_output(schema=ClassifyQuery)
+llm_resume_analysis = chat_llm.with_structured_output(schema=ResumeAnalysis)
+

@@ -6,10 +6,8 @@ from langgraph.graph.message import add_messages
 
 class ChatState(TypedDict):
     messages: Annotated[list[AnyMessage], add_messages]
-    conversation_thread: str
     analyzed_resume_data : str
     job_description : str
-    resume_data : str
 
 class ExtractResumeDataSchema(BaseModel):
     candidate_name : Optional[str] = Field(None , description="Name of the candidate.")
@@ -24,3 +22,7 @@ class ExtractResumeDataSchema(BaseModel):
 
 class ClassifyQuery(BaseModel):
     sentiment : Literal['hr','general'] = Field(... , description="classify the query of user if it is related to human resource related or not.")
+
+class ResumeAnalysis(BaseModel):
+    fit_score : int = Field(... , description="A fit score of the candidate.")
+    analysis_summary : str = Field(... , description="A short and concise summary of analysis")

@@ -1,22 +1,17 @@
 from langgraph.graph import START, END, StateGraph
-from langchain_core.messages import HumanMessage, AIMessage
+from langchain_core.messages import AIMessage
 from langchain_core.output_parsers import StrOutputParser
 
 from langchain_core.prompts import ChatPromptTemplate
 from langgraph.checkpoint.memory import MemorySaver
-from utils import parse_file, analyze_resume, classify_query
 from LLM_models import chat_llm
 from LLM_shcemas import ChatState
-from typing import Literal
 
 from dotenv import load_dotenv
-import os
 
 load_dotenv()
 
 UPLOADS = "Uploads"
-
-
 
 
 def query(state: ChatState) -> ChatState:
@@ -24,15 +19,15 @@ def query(state: ChatState) -> ChatState:
     user_question = state["messages"][-1].content
     prompt = ChatPromptTemplate.from_messages([
         ("system", """
-        You are a helpful HR assistant.
-        Summary of the analysis of resume:
+        You are a helpful HR assistant. Can answer to your fullest knowledge about what user asks you.
+         
+        These are the short description and details of analyzed and short descripted resumes:
         {analyzed_resume_data}
 
         Job description:
         {job_description}
 
-        Resume data:
-        {resume_data}
+        
         """),
         ("human", "{user_question}")
     ])
@@ -41,7 +36,6 @@ def query(state: ChatState) -> ChatState:
     response = chain.invoke({
         "analyzed_resume_data": state["analyzed_resume_data"],
         "job_description": state["job_description"],
-        "resume_data": state["resume_data"],
         "user_question": user_question
     })
 
