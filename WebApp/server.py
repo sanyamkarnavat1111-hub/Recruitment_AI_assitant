@@ -9,7 +9,7 @@ import logging
 import tempfile
 from utils import parse_file, extract_data_from_resume , analyze_resume
 from database import insert_extracted_data , get_thread_data , test_connection , drop_table , create_table
-
+from typing import List
 
 # ====================== Logging Setup ======================
 logging.basicConfig(level=logging.INFO)
@@ -54,8 +54,8 @@ def homepage():
 # ====================== Upload Endpoint (Temp File → Parse → Delete) ======================
 @app.post("/upload")
 async def upload_files(
-    resume_file: UploadFile = File(...),          # <-- required
-    job_description_file: UploadFile = File(...), # <-- required
+    resume_files: List[UploadFile] = File(..., description="Multiple resume files"),          
+    job_description_file: UploadFile = File(..., description="Single job description file"),
     thread_id: str = Form(...),
 ):
     if not thread_id or not thread_id.strip():
@@ -64,65 +64,87 @@ async def upload_files(
             detail="thread_id is required and cannot be empty."
         )
 
+    if not resume_files or not any(f.filename for f in resume_files):
+        raise HTTPException(
+            status_code=status.HTTP_400_BAD_REQUEST,
+            detail="At least one resume file is required."
+        )
+
+    if not job_description_file.filename:
+        raise HTTPException(
+            status_code=status.HTTP_400_BAD_REQUEST,
+            detail="Job description file is required."
+        )
+
     # ------------------------------------------------------------------
     # 1. Initialise tracking variables
     # ------------------------------------------------------------------
-    success = {"resume": False, "job_description": False}
-    temp_resume_path: str | None = None
+    success = {"resumes": [], "job_description": False}
+    temp_resume_paths: List[str] = []
     temp_jd_path: str | None = None
 
-    resume_data: str | None = None
+    resumes = []  # To store parsed resume texts
     job_description_data: str | None = None
 
     try:
         # ------------------------------------------------------------------
-        # 2. RESUME
+        # 2. PROCESS MULTIPLE RESUMES
         # ------------------------------------------------------------------
-        if not resume_file.filename:
+        for idx, resume_file in enumerate(resume_files):
+            if not resume_file.filename:
+                continue  # Skip empty entries
+
+            ext = resume_file.filename.rsplit(".", 1)[-1].lower()
+            if ext not in {"pdf", "txt", "docx"}:
+                raise HTTPException(
+                    status_code=status.HTTP_400_BAD_REQUEST,
+                    detail=f"Unsupported resume file type: .{ext} in file '{resume_file.filename}'"
+                )
+
+            raw_bytes = await resume_file.read()
+            if not raw_bytes:
+                logger.warning(f"[THREAD {thread_id}] Resume {idx} is empty: {resume_file.filename}")
+                continue
+
+            temp_file = tempfile.NamedTemporaryFile(delete=False, suffix=f".{ext}")
+            temp_file.write(raw_bytes)
+            temp_file.close()
+            temp_path = temp_file.name
+            temp_resume_paths.append(temp_path)
+
+            logger.info(f"[THREAD {thread_id}] Resume {idx} temp file: {temp_path}")
+
+            try:
+                parsed_text = parse_file(temp_path)
+                resumes.append(parsed_text)
+                success["resumes"].append({
+                    "filename": resume_file.filename,
+                    "parsed": True,
+                    "length": len(parsed_text)
+                })
+                logger.info(f"[THREAD {thread_id}] Resume {idx} parsed: {resume_file.filename} ({len(parsed_text)} chars)")
+            except Exception as e:
+                success["resumes"].append({
+                    "filename": resume_file.filename,
+                    "parsed": False,
+                    "error": str(e)
+                })
+                logger.error(f"[THREAD {thread_id}] Failed to parse resume {idx}: {str(e)}")
+            finally:
+                if os.path.exists(temp_path):
+                    os.unlink(temp_path)
+                    temp_resume_paths.remove(temp_path)
+                    logger.info(f"[THREAD {thread_id}] Deleted resume temp file: {temp_path}")
+
+        if not resumes:
             raise HTTPException(
                 status_code=status.HTTP_400_BAD_REQUEST,
-                detail="Resume file is required but no filename was sent."
+                detail="No resumes were successfully parsed."
             )
-
-        ext = resume_file.filename.rsplit(".", 1)[-1].lower()
-        if ext not in {"pdf", "txt", "docx"}:
-            raise HTTPException(
-                status_code=status.HTTP_400_BAD_REQUEST,
-                detail=f"Unsupported resume file type: .{ext}"
-            )
-
-        raw_bytes = await resume_file.read()
-        if not raw_bytes:
-            raise ValueError("Resume file is empty.")
-
-        # ---- write to a real temp file (loader needs a path) ----
-        temp_file = tempfile.NamedTemporaryFile(delete=False, suffix=f".{ext}")
-        temp_file.write(raw_bytes)
-        temp_file.close()
-        temp_resume_path = temp_file.name
-
-        logger.info(f"[THREAD {thread_id}] Resume temp file created: {temp_resume_path}")
-
-        # ---- parse -------------------------------------------------
-        resume_data = parse_file(temp_resume_path)
-        success["resume"] = True
-        logger.info(f"[THREAD {thread_id}] Resume parsed successfully (len={len(resume_data)} chars)")
-
-        # ---- delete ------------------------------------------------
-        if os.path.exists(temp_resume_path):
-            os.unlink(temp_resume_path)
-            logger.info(f"[THREAD {thread_id}] Deleted resume temp file: {temp_resume_path}")
-        temp_resume_path = None
 
         # ------------------------------------------------------------------
-        # 3. JOB DESCRIPTION
+        # 3. JOB DESCRIPTION (Single File)
         # ------------------------------------------------------------------
-        if not job_description_file.filename:
-            raise HTTPException(
-                status_code=status.HTTP_400_BAD_REQUEST,
-                detail="Job-description file is required but no filename was sent."
-            )
-
         ext = job_description_file.filename.rsplit(".", 1)[-1].lower()
         if ext not in {"pdf", "txt", "docx"}:
             raise HTTPException(
@@ -132,7 +154,7 @@ async def upload_files(
 
         raw_bytes = await job_description_file.read()
         if not raw_bytes:
-            raise ValueError("Job-description file is empty.")
+            raise ValueError("Job description file is empty.")
 
         temp_file = tempfile.NamedTemporaryFile(delete=False, suffix=f".{ext}")
         temp_file.write(raw_bytes)
@@ -145,34 +167,34 @@ async def upload_files(
         success["job_description"] = True
         logger.info(f"[THREAD {thread_id}] JD parsed successfully (len={len(job_description_data)} chars)")
 
+        # Cleanup JD temp file
         if os.path.exists(temp_jd_path):
             os.unlink(temp_jd_path)
             logger.info(f"[THREAD {thread_id}] Deleted JD temp file: {temp_jd_path}")
         temp_jd_path = None
 
-        
+        # ------------------------------------------------------------------
+        # 4. ANALYSIS & EXTRACTION (Now over multiple resumes)
+        # ------------------------------------------------------------------
         try:
-            logger.info(f"Starting Data extraction and analysis for thread {thread_id}")
+            logger.info(f"Starting analysis for {len(resumes)} resume(s) in thread {thread_id}")
 
+            # Combine all resume texts for analysis (or process individually as needed)
+            combined_resume_text = "\n\n--- RESUME SEPARATOR ---\n\n".join(resumes)
 
-            extracted_resume_data = extract_data_from_resume(
-                resume_data=resume_data,
-            )
+            # Extract data from **first** resume only (you can modify logic if needed)
+            # Or loop over all and store multiple entries
+            first_resume_data = resumes[0]
+            extracted_resume_data = extract_data_from_resume(resume_data=first_resume_data)
 
-            logger.info(f"Extraction completed for thread {thread_id}")
-
-            
-
+            # Analyze all resumes against JD
             analysis = analyze_resume(
-                resume_data=resume_data,
+                resume_data=combined_resume_text,  # Pass all resumes
                 job_description=job_description_data
             )
             logger.info(f"Analysis completed for thread {thread_id}")
 
-
-            
-            # Insert the extracted data from resume and analysis 
-
+            # Insert into DB (modify schema if storing multiple resumes)
             email_address = extracted_resume_data.get("email_address", "")
             linkedin_url = extracted_resume_data.get("linkedin_url", "")
             total_experience = int(extracted_resume_data.get("total_experience", 0))
@@ -181,10 +203,9 @@ async def upload_files(
             work_experience = extracted_resume_data.get("work_experience", "")
             projects = extracted_resume_data.get("projects", "")
 
-            
             insert_extracted_data(
-                thread_id= thread_id,
-                email_address= email_address,
+                thread_id=thread_id,
+                email_address=email_address,
                 linkedin_url=linkedin_url,
                 total_experience=total_experience,
                 skills=skills,
@@ -192,15 +213,14 @@ async def upload_files(
                 work_experience=work_experience,
                 projects=projects,
                 analysis=analysis,
-                resume_data=resume_data,
+                resume_data=combined_resume_text,  # Store all resumes
                 job_description_data=job_description_data
             )
 
-            logger.info("Extracted resume data and analysis saved ")
-            
+            logger.info("Extracted data and analysis saved to DB")
+
         except Exception as e:
             logger.error(f"Analysis failed for thread {thread_id}: {str(e)}")
-            
             raise HTTPException(
                 status_code=status.HTTP_500_INTERNAL_SERVER_ERROR,
                 detail=f"Resume analysis failed: {str(e)}"
@@ -209,13 +229,13 @@ async def upload_files(
         return JSONResponse({
             "success": True,
             "uploaded": success,
-            "both_uploaded": True,
-            "analysis": analysis
+            "both_uploaded": len(resumes) > 0 and success["job_description"],
+            "resume_count": len(resumes)
         })
 
     except HTTPException:
-        # Cleanup any temp files on error
-        for path in [temp_resume_path, temp_jd_path]:
+        # Cleanup any remaining temp files
+        for path in [temp_jd_path] + temp_resume_paths:
             if path and os.path.exists(path):
                 try:
                     os.unlink(path)
@@ -225,8 +245,7 @@ async def upload_files(
         raise
     except Exception as e:
         logger.critical(f"Unexpected error in /upload for thread {thread_id}: {str(e)}")
-        # Final cleanup
-        for path in [temp_resume_path, temp_jd_path]:
+        for path in [temp_jd_path] + temp_resume_paths:
             if path and os.path.exists(path):
                 try:
                     os.unlink(path)
@@ -241,7 +260,6 @@ async def upload_files(
         }, status_code=status.HTTP_500_INTERNAL_SERVER_ERROR)
 
 
-
 @app.post('/query')
 def answer_query(
     thread_id : str = Form(...),
@@ -250,6 +268,9 @@ def answer_query(
     
     # check if thread id is present or not in database
     thread_id_data = get_thread_data(thread_id=thread_id)
+
+
+    logger.info(f"Thread data \n :- {thread_id_data}")
 
     if thread_id_data:
         # If thread exists then get the resume data and job description

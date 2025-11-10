@@ -1,101 +1,361 @@
 <!DOCTYPE html>
 <html lang="en">
+
 <head>
   <meta charset="UTF-8" />
-  <meta name="viewport" content="width=device-width, initial-scale=1.0"/>
+  <meta name="viewport" content="width=device-width, initial-scale=1.0" />
   <title>AI Assistant</title>
-  <link rel="stylesheet" href="https://cdnjs.cloudflare.com/ajax/libs/font-awesome/6.4.0/css/all.min.css"/>
+  <link rel="stylesheet" href="https://cdnjs.cloudflare.com/ajax/libs/font-awesome/6.4.0/css/all.min.css" />
   <!-- Markdown renderer -->
   <script src="https://cdn.jsdelivr.net/npm/marked/marked.min.js"></script>
   <!-- Optional but recommended: sanitize HTML -->
   <script src="https://cdn.jsdelivr.net/npm/dompurify@3.1.6/dist/purify.min.js"></script>
   <style>
     /* ==== Base ==== */
-    * { margin:0; padding:0; box-sizing:border-box; }
-    body {font-family:'Segoe UI',sans-serif; background:#f8f9fa; color:#333; line-height:1.6;}
-    .container {max-width:900px; margin:0 auto; padding:20px; height:100vh; display:flex; flex-direction:column;}
+    * {
+      margin: 0;
+      padding: 0;
+      box-sizing: border-box;
+    }
+
+    body {
+      font-family: 'Segoe UI', sans-serif;
+      background: #f8f9fa;
+      color: #333;
+      line-height: 1.6;
+    }
+
+    .container {
+      max-width: 900px;
+      margin: 0 auto;
+      padding: 20px;
+      height: 100vh;
+      display: flex;
+      flex-direction: column;
+    }
 
     /* ==== Header ==== */
-    .header {margin-bottom:30px;}
-    .greeting {font-size:2.8rem; font-weight:700;
-      background:linear-gradient(90deg,#4f46e5,#7c3aed);
-      -webkit-background-clip:text; -webkit-text-fill-color:transparent; background-clip:text;}
-    .subtext {font-size:1.1rem; color:#555; margin-bottom:8px;}
-    .highlight {color:#7c3aed; font-weight:600; cursor:pointer;}
+    .header {
+      margin-bottom: 30px;
+    }
+
+    .greeting {
+      font-size: 2.8rem;
+      font-weight: 700;
+      background: linear-gradient(90deg, #4f46e5, #7c3aed);
+      -webkit-background-clip: text;
+      -webkit-text-fill-color: transparent;
+      background-clip: text;
+    }
+
+    .subtext {
+      font-size: 1.1rem;
+      color: #555;
+      margin-bottom: 8px;
+    }
+
+    .highlight {
+      color: #7c3aed;
+      font-weight: 600;
+      cursor: pointer;
+    }
 
     /* ==== Upload Section ==== */
     .upload-section {
-      display:flex; flex-direction:column; gap:16px; margin-bottom:24px;
-      padding:16px; background:#fff; border-radius:12px; box-shadow:0 2px 8px rgba(0,0,0,.05);
-      opacity:0; transform:translateY(20px);
-      animation:fadeSlideUp .6s ease forwards;
+      display: flex;
+      flex-direction: column;
+      gap: 16px;
+      margin-bottom: 24px;
+      padding: 16px;
+      background: #fff;
+      border-radius: 12px;
+      box-shadow: 0 2px 8px rgba(0, 0, 0, .05);
+      opacity: 0;
+      transform: translateY(20px);
+      animation: fadeSlideUp .6s ease forwards;
     }
-    .upload-group {display:flex; flex-direction:column; gap:8px;}
-    .upload-label {font-weight:600; color:#444;}
-    .file-upload-wrapper {position:relative; width:100%;}
-    .file-upload {position:absolute; opacity:0; width:100%; height:100%; cursor:pointer;}
-    .file-upload-btn {display:flex; align-items:center; justify-content:center; gap:10px;
-      padding:12px 20px; background:#f1f5f9; border:2px dashed #94a3b8; border-radius:10px;
-      color:#64748b; font-weight:500; cursor:pointer; transition:background .25s, border .25s, transform .2s;}
-    .file-upload-btn:hover {background:#e2e8f0; border-color:#7c3aed; transform:translateY(-2px);}
-    .file-name {margin-top:6px; font-size:.9rem; color:#16a34a;}
+
+    .upload-group {
+      display: flex;
+      flex-direction: column;
+      gap: 8px;
+    }
+
+    .upload-label {
+      font-weight: 600;
+      color: #444;
+    }
+
+    .file-upload-wrapper {
+      position: relative;
+      width: 100%;
+    }
+
+    .file-upload {
+      position: absolute;
+      opacity: 0;
+      width: 100%;
+      height: 100%;
+      cursor: pointer;
+    }
+
+    .file-upload-btn {
+      display: flex;
+      align-items: center;
+      justify-content: center;
+      gap: 10px;
+      padding: 12px 20px;
+      background: #f1f5f9;
+      border: 2px dashed #94a3b8;
+      border-radius: 10px;
+      color: #64748b;
+      font-weight: 500;
+      cursor: pointer;
+      transition: background .25s, border .25s, transform .2s;
+    }
+
+    .file-upload-btn:hover {
+      background: #e2e8f0;
+      border-color: #7c3aed;
+      transform: translateY(-2px);
+    }
+
+    .file-name {
+      margin-top: 6px;
+      font-size: .9rem;
+      color: #16a34a;
+    }
+
+    .file-list {
+      margin-top: 8px;
+      max-height: 120px;
+      overflow-y: auto;
+      padding-right: 8px;
+    }
+
+    .file-item {
+      display: flex;
+      align-items: center;
+      gap: 8px;
+      font-size: .9rem;
+      color: #16a34a;
+      margin-bottom: 4px;
+    }
+
+    .file-item i {
+      color: #dc2626;
+      cursor: pointer;
+      font-size: .8rem;
+    }
+
     .upload-action {
-      margin-top:12px; display:flex; justify-content:flex-end;
+      margin-top: 12px;
+      display: flex;
+      justify-content: flex-end;
     }
+
     .upload-action button {
-      padding:10px 20px; background:#7c3aed; color:#fff; border:none; border-radius:8px;
-      font-weight:600; cursor:pointer; display:flex; align-items:center; gap:8px;
-      transition:background .25s, transform .2s;
+      padding: 10px 20px;
+      background: #7c3aed;
+      color: #fff;
+      border: none;
+      border-radius: 8px;
+      font-weight: 600;
+      cursor: pointer;
+      display: flex;
+      align-items: center;
+      gap: 8px;
+      transition: background .25s, transform .2s;
     }
-    .upload-action button:hover {background:#6d28d9; transform:scale(1.03);}
-    .upload-action button:disabled {background:#94a3b8; cursor:not-allowed; transform:none;}
+
+    .upload-action button:hover {
+      background: #6d28d9;
+      transform: scale(1.03);
+    }
+
+    .upload-action button:disabled {
+      background: #94a3b8;
+      cursor: not-allowed;
+      transform: none;
+    }
 
     /* ==== Chat Section ==== */
-    .chat-container {flex:1; display:flex; flex-direction:column; background:#fff;
-      border-radius:12px; box-shadow:0 4px 12px rgba(0,0,0,.08); overflow:hidden; margin-bottom:16px;
-      opacity:0; transform:translateY(20px);
-      animation:fadeSlideUp .6s ease forwards .2s;
+    .chat-container {
+      flex: 1;
+      display: flex;
+      flex-direction: column;
+      background: #fff;
+      border-radius: 12px;
+      box-shadow: 0 4px 12px rgba(0, 0, 0, .08);
+      overflow: hidden;
+      margin-bottom: 16px;
+      opacity: 0;
+      transform: translateY(20px);
+      animation: fadeSlideUp .6s ease forwards .2s;
     }
-    .chat-messages {flex:1; padding:20px; overflow-y:auto; display:flex; flex-direction:column; gap:16px;}
+
+    .chat-messages {
+      flex: 1;
+      padding: 20px;
+      overflow-y: auto;
+      display: flex;
+      flex-direction: column;
+      gap: 16px;
+    }
+
     .message {
-      max-width:80%; padding:12px 16px; border-radius:18px; font-size:1rem; line-height:1.65;
-      opacity:0; transform:translateY(10px);
-      animation:msgFadeIn .4s ease forwards;
+      max-width: 80%;
+      padding: 12px 16px;
+      border-radius: 18px;
+      font-size: 1rem;
+      line-height: 1.65;
+      opacity: 0;
+      transform: translateY(10px);
+      animation: msgFadeIn .4s ease forwards;
     }
-    .user-message {align-self:flex-end; background:#4f46e5; color:#fff; border-bottom-right-radius:4px;}
-    .ai-message {align-self:flex-start; background:#f1f5f9; color:#1e293b; border-bottom-left-radius:4px;}
 
-    .input-area {display:flex; padding:16px; background:#f8fafc; border-top:1px solid #e2e8f0; gap:12px;}
-    .text-input {flex:1; padding:14px 18px; font-size:1rem; border:1px solid #cbd5e1;
-      border-radius:50px; outline:none; transition:border .2s, box-shadow .2s;}
-    .text-input:focus {border-color:#7c3aed; box-shadow:0 0 0 3px rgba(124,58,237,.1);}
-    .send-btn {width:48px; height:48px; background:#7c3aed; color:#fff; border:none;
-      border-radius:50%; font-size:1.2rem; cursor:pointer; display:flex; align-items:center;
-      justify-content:center; transition:all .25s;}
-    .send-btn:hover {background:#6d28d9; transform:scale(1.08);}
-    .send-btn:disabled {background:#94a3b8; cursor:not-allowed; transform:none;}
+    .user-message {
+      align-self: flex-end;
+      background: #4f46e5;
+      color: #fff;
+      border-bottom-right-radius: 4px;
+    }
 
-    .hidden {display:none !important;}
+    .ai-message {
+      align-self: flex-start;
+      background: #f1f5f9;
+      color: #1e293b;
+      border-bottom-left-radius: 4px;
+    }
+
+    .input-area {
+      display: flex;
+      padding: 16px;
+      background: #f8fafc;
+      border-top: 1px solid #e2e8f0;
+      gap: 12px;
+    }
+
+    .text-input {
+      flex: 1;
+      padding: 14px 18px;
+      font-size: 1rem;
+      border: 1px solid #cbd5e1;
+      border-radius: 50px;
+      outline: none;
+      transition: border .2s, box-shadow .2s;
+    }
+
+    .text-input:focus {
+      border-color: #7c3aed;
+      box-shadow: 0 0 0 3px rgba(124, 58, 237, .1);
+    }
+
+    .send-btn {
+      width: 48px;
+      height: 48px;
+      background: #7c3aed;
+      color: #fff;
+      border: none;
+      border-radius: 50%;
+      font-size: 1.2rem;
+      cursor: pointer;
+      display: flex;
+      align-items: center;
+      justify-content: center;
+      transition: all .25s;
+    }
+
+    .send-btn:hover {
+      background: #6d28d9;
+      transform: scale(1.08);
+    }
+
+    .send-btn:disabled {
+      background: #94a3b8;
+      cursor: not-allowed;
+      transform: none;
+    }
+
+    .hidden {
+      display: none !important;
+    }
 
     /* ==== Animations ==== */
     @keyframes fadeSlideUp {
-      to {opacity:1; transform:translateY(0);}
+      to {
+        opacity: 1;
+        transform: translateY(0);
+      }
     }
+
     @keyframes msgFadeIn {
-      to {opacity:1; transform:translateY(0);}
+      to {
+        opacity: 1;
+        transform: translateY(0);
+      }
     }
 
     /* ==== Markdown inside AI bubbles ==== */
-    .ai-message {line-height:1.65;}
-    .ai-message h1,.ai-message h2,.ai-message h3,.ai-message h4{margin:.8em 0 .4em;font-weight:600;color:#1e293b;}
-    .ai-message h1{font-size:1.35rem;}
-    .ai-message h2{font-size:1.2rem;}
-    .ai-message h3{font-size:1.1rem;}
-    .ai-message ul,.ai-message ol{margin:.6em 0;padding-left:1.4em;}
-    .ai-message li{margin:.25em 0;}
-    .ai-message code{background:rgba(0,0,0,.07);padding:.15em .35em;border-radius:4px;font-size:.9em;}
-    .ai-message pre{background:#1e293b;color:#e2e8f0;padding:12px;border-radius:8px;overflow-x:auto;margin:.8em 0;font-size:.9rem;}
-    .ai-message blockquote{border-left:4px solid #7c3aed;margin:.8em 0;padding-left:1em;color:#555;font-style:italic;}
+    .ai-message {
+      line-height: 1.65;
+    }
+
+    .ai-message h1,
+    .ai-message h2,
+    .ai-message h3,
+    .ai-message h4 {
+      margin: .8em 0 .4em;
+      font-weight: 600;
+      color: #1e293b;
+    }
+
+    .ai-message h1 {
+      font-size: 1.35rem;
+    }
+
+    .ai-message h2 {
+      font-size: 1.2rem;
+    }
+
+    .ai-message h3 {
+      font-size: 1.1rem;
+    }
+
+    .ai-message ul,
+    .ai-message ol {
+      margin: .6em 0;
+      padding-left: 1.4em;
+    }
+
+    .ai-message li {
+      margin: .25em 0;
+    }
+
+    .ai-message code {
+      background: rgba(0, 0, 0, .07);
+      padding: .15em .35em;
+      border-radius: 4px;
+      font-size: .9em;
+    }
+
+    .ai-message pre {
+      background: #1e293b;
+      color: #e2e8f0;
+      padding: 12px;
+      border-radius: 8px;
+      overflow-x: auto;
+      margin: .8em 0;
+      font-size: .9rem;
+    }
+
+    .ai-message blockquote {
+      border-left: 4px solid #7c3aed;
+      margin: .8em 0;
+      padding-left: 1em;
+      color: #555;
+      font-style: italic;
+    }
 
     /* ==== Force analysis text to look like normal AI text (no code block) ==== */
     .analysis-plain {
@@ -110,18 +370,46 @@
     }
 
     /* ==== Responsiveness ==== */
-    @media (max-width:768px){
-      .greeting{font-size:2.3rem;}
-      .upload-section{flex-direction:column;}
+    @media (max-width:768px) {
+      .greeting {
+        font-size: 2.3rem;
+      }
+
+      .upload-section {
+        flex-direction: column;
+      }
     }
-    @media (max-width:480px){
-      .greeting{font-size:2rem;}
+
+    @media (max-width:480px) {
+      .greeting {
+        font-size: 2rem;
+      }
     }
-    .chat-messages::-webkit-scrollbar{width:6px;}
-    .chat-messages::-webkit-scrollbar-track{background:transparent;}
-    .chat-messages::-webkit-scrollbar-thumb{background:#cbd5e1; border-radius:3px;}
+
+    .chat-messages::-webkit-scrollbar {
+      width: 6px;
+    }
+
+    .chat-messages::-webkit-scrollbar-track {
+      background: transparent;
+    }
+
+    .chat-messages::-webkit-scrollbar-thumb {
+      background: #cbd5e1;
+      border-radius: 3px;
+    }
+
+    .file-list::-webkit-scrollbar {
+      width: 4px;
+    }
+
+    .file-list::-webkit-scrollbar-thumb {
+      background: #cbd5e1;
+      border-radius: 2px;
+    }
   </style>
 </head>
+
 <body>
   <div class="container">
     <!-- Header -->
@@ -129,7 +417,7 @@
       <h1 class="greeting">Hello,</h1>
       <h2 style="font-size:2rem;font-weight:700;margin-bottom:12px;">How can I help you today?</h2>
       <p class="subtext">
-        I'm an Recruiter AI assistant.<br/>
+        I'm an Recruiter AI assistant.<br />
         Ask me anything about the <span class="highlight">Uploaded Resume</span>
       </p>
     </div>
@@ -139,19 +427,20 @@
       <div class="upload-group">
         <label class="upload-label">Upload Job Description</label>
         <div class="file-upload-wrapper">
-          <input type="file" id="jd-file" class="file-upload" accept=".pdf,.doc,.docx,.txt"/>
+          <input type="file" id="jd-file" class="file-upload" accept=".pdf,.doc,.docx,.txt" />
           <div class="file-upload-btn"><i class="fas fa-cloud-upload-alt"></i> Choose File</div>
         </div>
         <div id="jd-name" class="file-name" style="display:none;"></div>
       </div>
 
+      <!-- Modified Resume Upload: Multiple Files -->
       <div class="upload-group">
-        <label class="upload-label">Upload Resume</label>
+        <label class="upload-label">Upload Resumes (Multiple allowed)</label>
         <div class="file-upload-wrapper">
-          <input type="file" id="resume-file" class="file-upload" accept=".pdf,.doc,.docx,.txt"/>
-          <div class="file-upload-btn"><i class="fas fa-cloud-upload-alt"></i> Choose File</div>
+          <input type="file" id="resume-file" class="file-upload" accept=".pdf,.doc,.docx,.txt" multiple />
+          <div class="file-upload-btn"><i class="fas fa-cloud-upload-alt"></i> Choose Files</div>
         </div>
-        <div id="resume-name" class="file-name" style="display:none;"></div>
+        <div id="resume-list" class="file-list" style="display:none;"></div>
       </div>
 
       <div class="upload-action">
@@ -175,42 +464,83 @@
     const threadId = crypto.randomUUID();
 
     // DOM
-    const uploadSection   = document.getElementById('upload-section');
-    const chatSection     = document.getElementById('chat-section');
-    const jdInput         = document.getElementById('jd-file');
-    const resumeInput     = document.getElementById('resume-file');
-    const jdName          = document.getElementById('jd-name');
-    const resumeName      = document.getElementById('resume-name');
-    const uploadBtn       = document.getElementById('upload-btn');
-    const userInput       = document.getElementById('user-input');
-    const sendBtn         = document.getElementById('send-btn');
-    const chatMessages    = document.getElementById('chat-messages');
+    const uploadSection = document.getElementById('upload-section');
+    const chatSection = document.getElementById('chat-section');
+    const jdInput = document.getElementById('jd-file');
+    const resumeInput = document.getElementById('resume-file');
+    const jdName = document.getElementById('jd-name');
+    const resumeList = document.getElementById('resume-list');
+    const uploadBtn = document.getElementById('upload-btn');
+    const userInput = document.getElementById('user-input');
+    const sendBtn = document.getElementById('send-btn');
+    const chatMessages = document.getElementById('chat-messages');
 
-    let jdFile = null, resumeFile = null;
+    let jdFile = null;
+    let resumeFiles = []; // Now an array
 
-    // ----- File name display -----
+    // ----- JD file handling (unchanged) -----
     jdInput.addEventListener('change', e => {
       jdFile = e.target.files[0];
-      if (jdFile) { jdName.textContent = jdFile.name; jdName.style.display = 'block'; }
-      toggleUploadButton();
-    });
-    resumeInput.addEventListener('change', e => {
-      resumeFile = e.target.files[0];
-      if (resumeFile) { resumeName.textContent = resumeFile.name; resumeName.style.display = 'block'; }
+      if (jdFile) {
+        jdName.textContent = jdFile.name;
+        jdName.style.display = 'block';
+      } else {
+        jdName.style.display = 'none';
+      }
       toggleUploadButton();
     });
 
+    // ----- Resume files handling (updated for multiple) -----
+    resumeInput.addEventListener('change', e => {
+      const newFiles = Array.from(e.target.files);
+      resumeFiles = [...resumeFiles, ...newFiles];
+      renderResumeList();
+      toggleUploadButton();
+    });
+
+    function renderResumeList() {
+      if (resumeFiles.length === 0) {
+        resumeList.style.display = 'none';
+        return;
+      }
+
+      resumeList.innerHTML = '';
+      resumeFiles.forEach((file, index) => {
+        const item = document.createElement('div');
+        item.className = 'file-item';
+        item.innerHTML = `
+          <span>${file.name}</span>
+          <i class="fas fa-times" data-index="${index}"></i>
+        `;
+        resumeList.appendChild(item);
+      });
+
+      // Remove file on click
+      resumeList.querySelectorAll('.fa-times').forEach(icon => {
+        icon.addEventListener('click', () => {
+          const idx = parseInt(icon.dataset.index);
+          resumeFiles.splice(idx, 1);
+          renderResumeList();
+          toggleUploadButton();
+        });
+      });
+
+      resumeList.style.display = 'block';
+    }
+
     function toggleUploadButton() {
-      uploadBtn.disabled = !(jdFile && resumeFile);
+      uploadBtn.disabled = !(jdFile && resumeFiles.length > 0);
     }
 
     // ----- Upload -----
     uploadBtn.addEventListener('click', async () => {
-      if (!jdFile || !resumeFile) return;
+      if (!jdFile || resumeFiles.length === 0) return;
 
       const form = new FormData();
       form.append('job_description_file', jdFile);
-      form.append('resume_file', resumeFile);
+      resumeFiles.forEach((file, i) => {
+        form.append(`resume_files`, file);
+      });
       form.append('thread_id', threadId);
 
       uploadBtn.disabled = true;
@@ -224,13 +554,8 @@
           uploadSection.classList.add('hidden');
           chatSection.classList.remove('hidden');
 
-          // 1. Static success line
+          // Only success message — NO analysis shown
           addMessage('ai', 'Files uploaded and analyzed. You can now ask questions!');
-
-          // 2. Full analysis (Markdown, but without code block)
-          if (data.analysis) {
-            addMessage('ai', data.analysis);
-          }
         } else {
           alert('Upload failed. Please try again.');
         }
@@ -291,4 +616,5 @@
     }
   </script>
 </body>
+
 </html>

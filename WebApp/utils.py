@@ -8,7 +8,8 @@ from langchain_community.document_loaders import (
 )
 from langchain_core.prompts import ChatPromptTemplate
 from langchain_core.output_parsers import StrOutputParser
-from LLM_models import chat_llm , llm_resume_data_extractor
+from LLM_models import chat_llm , llm_resume_data_extractor , llm_sentiment_analyzer
+from typing import Literal
 from tenacity import retry , stop_after_attempt , wait_fixed
 
 def parse_file(file_path: str) -> str:
@@ -86,6 +87,28 @@ def extract_data_from_resume(resume_data: str) -> dict:
             "work_experience": result.work_experience,
             "projects": result.projects
         }
+
+
+
+def classify_query(query: str) -> Literal["hr", "general"]:
+    prompt = ChatPromptTemplate.from_template(
+        """
+        You are an AI assistant specializing in recruitment and human resources.
+
+        Your task is to classify the following user query into one of two categories:
+        - hr :- The query is related to hiring, recruitment, jobs, human resources, onboarding, employee management, benefits, payroll, or related HR topics.
+        - general :- The query is about anything else not related to HR.
+
+        Return only one word as your answer: either "hr" or "general".
+
+        User Query:
+        {user_query}
+        """
+    )
+    classify_chain = prompt | llm_sentiment_analyzer
+
+    result = classify_chain.invoke({"user_query": query})
+    return result
     
 
 def analyze_resume(resume_data : str , job_description : str ):

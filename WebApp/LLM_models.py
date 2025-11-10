@@ -1,8 +1,8 @@
 from langchain_groq import ChatGroq
-from LLM_shcemas import ExtractResumeDataSchema
+from LLM_shcemas import ExtractResumeDataSchema , ClassifyQuery
 
 
-GROQ_API_KEY = "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"
+GROQ_API_KEY = "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"
 
 
 chat_llm = ChatGroq(
@@ -12,3 +12,4 @@ chat_llm = ChatGroq(
 )
 
 llm_resume_data_extractor = chat_llm.with_structured_output(schema=ExtractResumeDataSchema)
+llm_sentiment_analyzer = chat_llm.with_structured_output(schema=ClassifyQuery)

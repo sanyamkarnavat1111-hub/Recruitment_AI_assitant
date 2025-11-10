@@ -1,47 +1,54 @@
 from langgraph.graph import START, END, StateGraph
-from langchain_core.messages import AnyMessage, HumanMessage, AIMessage
+from langchain_core.messages import HumanMessage, AIMessage
 from langchain_core.output_parsers import StrOutputParser
-from langgraph.graph.message import add_messages
-from typing import TypedDict, Annotated
+
 from langchain_core.prompts import ChatPromptTemplate
 from langgraph.checkpoint.memory import MemorySaver
-from utils import parse_file , analyze_resume
-from LLM_models import chat_llm 
+from utils import parse_file, analyze_resume, classify_query
+from LLM_models import chat_llm
+from LLM_shcemas import ChatState
+from typing import Literal
 
 from dotenv import load_dotenv
 import os
 
 load_dotenv()
 
-
 UPLOADS = "Uploads"
 
 
+def route_query(state: ChatState) -> Literal['query', 'respond_and_stop']:
+    """Routing function to determine if query is HR-related or not"""
+    user_query = state['messages'][-1].content
+    classified = classify_query(query=user_query)
+    return "query" if classified == "hr" else "respond_and_stop"
 
 
+def respond_and_stop(state: ChatState) -> ChatState:
+    """Handle non-HR queries with a polite response"""
+    user_query = state['messages'][-1].content
+    prompt = ChatPromptTemplate.from_template(
+        """
+        You are a polite HR assistant bot. The following query is unrelated to HR or recruitment.
+        Kindly inform the user that you can only handle HR-related queries, in a professional manner.
+
+        User query:
+        {user_query}
+        """
+    )
+
+    chain = prompt | chat_llm | StrOutputParser()
+    response = chain.invoke({"user_query": user_query})
+
+    return {"messages": [AIMessage(content=response)]}
 
 
-# === State Definition ===
-class ChatState(TypedDict):
-    messages: Annotated[list[AnyMessage], add_messages]
-    conversation_thread: str
-    analyzed_resume_data : str
-    job_description : str
-    resume_data : str
-
-
-
-
-
-
-# === Node: Answer User Query Using Analyzed Data ===
 def query(state: ChatState) -> ChatState:
-    messages = state["messages"]
-    user_question = messages[-1].content
-
+    """Handle HR-related queries using resume and job description data"""
+    user_question = state["messages"][-1].content
     prompt = ChatPromptTemplate.from_messages([
         ("system", """
-        You are a helpful HR assistant...
+        You are a helpful HR assistant.
         Summary of the analysis of resume:
         {analyzed_resume_data}
 
@@ -55,7 +62,6 @@ def query(state: ChatState) -> ChatState:
     ])
 
     chain = prompt | chat_llm | StrOutputParser()
-
     response = chain.invoke({
         "analyzed_resume_data": state["analyzed_resume_data"],
         "job_description": state["job_description"],
@@ -66,15 +72,28 @@ def query(state: ChatState) -> ChatState:
     return {"messages": [AIMessage(content=response)]}
 
 
-
-# === Build Graph ===
+# Create the graph
 graph = StateGraph(ChatState)
-graph.add_node("query", query)
 
-graph.add_edge(START , "query")
+# Add only the actual processing nodes (NOT the routing function)
+graph.add_node("query", query)
+graph.add_node("respond_and_stop", respond_and_stop)
+
+# Add conditional edges from START using the routing function
+graph.add_conditional_edges(
+    START,
+    route_query,
+    {
+        "query": "query",
+        "respond_and_stop": "respond_and_stop"
+    }
+)
+
+# Both nodes end the workflow
+graph.add_edge("respond_and_stop", END)
 graph.add_edge("query", END)
 
-# Compile with persistent memory
+# Compile with memory
 memory = MemorySaver()
 workflow = graph.compile(checkpointer=memory)
 
