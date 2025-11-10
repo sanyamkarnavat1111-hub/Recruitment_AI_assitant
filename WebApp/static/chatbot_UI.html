@@ -537,30 +537,48 @@
       if (!jdFile || resumeFiles.length === 0) return;
 
       const form = new FormData();
+
+      // Add job description file
       form.append('job_description_file', jdFile);
-      resumeFiles.forEach((file, i) => {
-        form.append(`resume_files`, file);
+
+      // Add multiple resume files with the SAME field name (no backticks, no index)
+      resumeFiles.forEach(file => {
+        form.append('resume_files', file);  // ✅ Same field name for all files
       });
+
+      // Add thread_id
       form.append('thread_id', threadId);
 
       uploadBtn.disabled = true;
       uploadBtn.innerHTML = '<i class="fas fa-spinner fa-spin"></i> Uploading...';
 
       try {
-        const res = await fetch('/upload', { method: 'POST', body: form });
+        const res = await fetch('/upload', {
+          method: 'POST',
+          body: form
+          // ❌ Do NOT add headers - let browser set Content-Type automatically
+        });
+
         const data = await res.json();
 
-        if (res.ok && data.both_uploaded) {
+        if (res.ok && data.success) {  // Changed to check data.success
           uploadSection.classList.add('hidden');
           chatSection.classList.remove('hidden');
 
-          // Only success message — NO analysis shown
-          addMessage('ai', 'Files uploaded and analyzed. You can now ask questions!');
+          // Show upload summary
+          const summary = `✅ Successfully processed ${data.processed_count} out of ${data.resume_count} resume(s)!`;
+          addMessage('ai', summary);
+
+          // Show any failures
+          if (data.failed_count > 0) {
+            const failMsg = `⚠️ ${data.failed_count} resume(s) failed to process.`;
+            addMessage('ai', failMsg);
+          }
         } else {
-          alert('Upload failed. Please try again.');
+          alert(`Upload failed: ${data.error || 'Please try again.'}`);
         }
       } catch (err) {
-        console.error(err);
+        console.error('Upload error:', err);
         alert('Network error. Please check your connection.');
       } finally {
         uploadBtn.disabled = false;

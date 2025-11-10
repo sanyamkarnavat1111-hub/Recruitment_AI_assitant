@@ -1,9 +1,14 @@
 from langchain_groq import ChatGroq
 from LLM_shcemas import ExtractResumeDataSchema , ClassifyQuery
+from dotenv import load_dotenv
+import os
 
 
-GROQ_API_KEY = "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"
+load_dotenv()
 
+
+
+GROQ_API_KEY = os.environ['GROQ_API_KEY']
 
 chat_llm = ChatGroq(
     model="llama-3.1-8b-instant",

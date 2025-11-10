@@ -12,6 +12,7 @@ class ChatState(TypedDict):
     resume_data : str
 
 class ExtractResumeDataSchema(BaseModel):
+    candidate_name : Optional[str] = Field(None , description="Name of the candidate.")
     email_address: Optional[str] = Field(None, description="Email address")
     linkedin_url: Optional[str] = Field(None, description="LinkedIn URL")
     total_experience: int = Field(..., description="Total years of experience", ge=0)

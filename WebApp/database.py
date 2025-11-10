@@ -38,6 +38,7 @@ def create_table():
                 CREATE TABLE IF NOT EXISTS users(
                     tid SERIAL PRIMARY KEY,
                     thread_id VARCHAR(10000) NOT NULL,
+                    candidate_name VARCHAR(100),
                     email_address VARCHAR(10000),
                     linkedin_url VARCHAR(10000),
                     total_experience SMALLINT NOT NULL,
@@ -73,6 +74,7 @@ def drop_table():
 
 def insert_extracted_data(
     thread_id: str,
+    candidate_name :str,
     email_address: str,
     linkedin_url: str,
     total_experience: int,
@@ -91,14 +93,14 @@ def insert_extracted_data(
         with conn.cursor() as cur:
             insert_query = '''
                 INSERT INTO users (
-                    thread_id, email_address, linkedin_url,
-                    total_experience, skills,
+                    thread_id, candidate_name , email_address, 
+                    linkedin_url,total_experience, skills,
                     education, work_experience, projects, analysis , resume_data , job_description_data
                 )
-                VALUES (%s, %s, %s, %s, %s, %s, %s, %s, %s , %s , %s)
+                VALUES (%s, %s, %s, %s, %s, %s, %s, %s, %s , %s , %s , %s)
             '''
             values = (
-                thread_id, email_address, linkedin_url,
+                thread_id, candidate_name , email_address, linkedin_url,
                 total_experience, skills,
                 education, work_experience, projects, analysis,
                 resume_data , job_description_data
@@ -157,7 +159,7 @@ def truncate():
 if __name__ == "__main__":
     
     test_connection()
-    drop_table()
-    create_table()
+    # drop_table()
+    # create_table()
     # truncate()
     print(get_all_data())

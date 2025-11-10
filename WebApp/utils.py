@@ -63,14 +63,14 @@ def extract_data_from_resume(resume_data: str) -> dict:
         {resume_data}
 
         Ensure that you extract the following details:
-
-        1. Total years of experience.
-        2. A list of all skills mentioned in the resume.
-        3. The candidate's email address (if mentioned).
-        4. The candidate's LinkedIn profile URL.
-        5. A summary of the candidate's education, including degrees, GPA (if available), and institution names.
-        6. A brief summary of the candidate's work experience.
-        7. A summary of notable projects, aside from work experience, that the candidate has worked on.
+        - Name of the candidate if provided.
+        - Total years of experience.
+        - A list of all skills mentioned in the resume.
+        - The candidate's email address (if mentioned).
+        - The candidate's LinkedIn profile URL.
+        - A summary of the candidate's education, including degrees, GPA (if available), and institution names.
+        - A brief summary of the candidate's work experience.
+        - A summary of notable projects, aside from work experience, that the candidate has worked on.
         """)
     ])
 
@@ -79,6 +79,7 @@ def extract_data_from_resume(resume_data: str) -> dict:
     result = data_extraction_chain.invoke(input={"resume_data": resume_data})
 
     return  {
+            "candidate_name" : result.candidate_name,
             "email_address": result.email_address,  
             "linkedin_url": result.linkedin_url,  
             "total_experience": result.total_experience, 
@@ -100,6 +101,7 @@ def classify_query(query: str) -> Literal["hr", "general"]:
         - general :- The query is about anything else not related to HR.
 
         Return only one word as your answer: either "hr" or "general".
+        - User might ask for analysis , providing the rat
 
         User Query:
         {user_query}
@@ -132,7 +134,7 @@ def analyze_resume(resume_data : str , job_description : str ):
 
     ## YOUR TASK: Perform a forensic-level resume-to-JD match analysis
     
-    Once you have completely analyzed the resume of the user provided a short summary of what
+    Once you have completely analyzed the resume of the user provide a short summary of what
     data, insights you got from the data and an opinion on how well the candidate aligns with given job description. 
     """)])
 
