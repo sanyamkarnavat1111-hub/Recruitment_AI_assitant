@@ -7,8 +7,7 @@ from langchain_community.document_loaders import (
     TextLoader
 )
 from langchain_core.prompts import ChatPromptTemplate
-from langchain_core.output_parsers import StrOutputParser
-from LLM_models import chat_llm , llm_resume_data_extractor , llm_sentiment_analyzer , llm_resume_analysis
+from LLM_models import llm_resume_data_extractor , llm_sentiment_analyzer , llm_resume_analysis
 from typing import Literal
 from tenacity import retry , stop_after_attempt , wait_fixed
 

@@ -6,8 +6,10 @@ from langgraph.graph.message import add_messages
 
 class ChatState(TypedDict):
     messages: Annotated[list[AnyMessage], add_messages]
+    thread_id : str
     analyzed_resume_data : str
     job_description : str
+    sql_retrieval : str
 
 class ExtractResumeDataSchema(BaseModel):
     candidate_name : Optional[str] = Field(None , description="Name of the candidate.")

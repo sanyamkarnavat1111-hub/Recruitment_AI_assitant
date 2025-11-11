@@ -8,7 +8,7 @@ from langchain_core.messages import HumanMessage, AIMessage
 import logging
 import tempfile
 from utils import parse_file, extract_data_from_resume, analyze_resume
-from database_sqlite import insert_extracted_data, get_thread_data, test_connection, drop_table, create_table
+from database_sqlite import insert_extracted_data, test_connection, drop_table, create_table
 from typing import List
 
 # ====================== Logging Setup ======================
@@ -246,8 +246,10 @@ async def upload_files(
         # Initialize state only once
         initial_state = {
             "messages": [],
+            "thread_id" : thread_id,
             "analyzed_resume_data": all_analysis_data.strip(),
             "job_description": job_description_data,
+            "sql_retrieval" : ""
         }
 
         # Save to LangGraph memory
@@ -309,6 +311,7 @@ def answer_query(
         
         # Only send the new user message
         input_state = {
+            "thread_id" : thread_id,
             "messages": [HumanMessage(content=query)]
         }
         

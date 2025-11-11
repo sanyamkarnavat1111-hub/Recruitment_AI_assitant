@@ -12,7 +12,7 @@ sql_agent_executor = create_sql_agent(
     llm=chat_llm,
     db=db,
     agent_type="tool-calling",  # Use "tool-calling" for modern LLMs with tool support
-    verbose=True,
+    verbose=False,
     max_iterations=15,
     handle_parsing_errors=True
 )
