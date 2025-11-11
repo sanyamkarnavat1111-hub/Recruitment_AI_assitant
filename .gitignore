@@ -8,3 +8,7 @@ Uploads/
 *.db
 *.db-shm
 *.db-wal
+*.json
+*.parquet
+*.csv
+*.arrow

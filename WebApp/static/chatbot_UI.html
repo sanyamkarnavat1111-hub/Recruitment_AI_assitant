@@ -553,7 +553,8 @@
       uploadBtn.innerHTML = '<i class="fas fa-spinner fa-spin"></i> Uploading...';
 
       try {
-        const res = await fetch('/upload', {
+        const BASE_URL = ' https://4fe9e3cc82a3.ngrok-free.app'+ '/upload' ;
+        const res = await fetch(BASE_URL, {
           method: 'POST',
           body: form
           // ❌ Do NOT add headers - let browser set Content-Type automatically
@@ -599,7 +600,8 @@
       form.append('query', text);
 
       try {
-        const res = await fetch('/query', { method: 'POST', body: form });
+        const BASE_URL = window.location.origin + '/query' ;
+        const res = await fetch(BASE_URL, { method: 'POST', body: form });
         const data = await res.json();
         addMessage('ai', data.response || 'No response from server.');
       } catch (err) {
