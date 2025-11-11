@@ -10,6 +10,10 @@ import tempfile
 from utils import parse_file, extract_data_from_resume, analyze_resume
 from database_sqlite import insert_extracted_data, test_connection, drop_table, create_table
 from typing import List
+from dotenv import load_dotenv
+
+
+load_dotenv()
 
 # ====================== Logging Setup ======================
 logging.basicConfig(level=logging.INFO)
@@ -343,6 +347,10 @@ if __name__ == "__main__":
     test_connection()
     drop_table()
     create_table()
+
+    os.makedirs(os.environ['DATABASE_DIR'],exist_ok=True)
+    os.makedirs( os.environ['CHAT_HISTORY_DIR'], exist_ok=True)
+    
     port = 3333
     logger.info(f"Starting server on port {port}")
     

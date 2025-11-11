@@ -12,8 +12,8 @@ import os
 from dotenv import load_dotenv
 load_dotenv()
 
-CHAT_HISTORY_DIR = "Chat_history"
-os.makedirs( CHAT_HISTORY_DIR, exist_ok=True)
+
+
 
 
 
@@ -97,7 +97,7 @@ graph.add_edge("database_retriever" , "query")
 graph.add_edge("query", END)
 
 # Sqlite 3 database checkpointer
-db_conn = sqlite3.connect(f"{CHAT_HISTORY_DIR}/chat_history.db" , check_same_thread=False)
+db_conn = sqlite3.connect(f"{os.environ['CHAT_HISTORY_DIR']}/chat_history.db" , check_same_thread=False)
 sqlite_memory = SqliteSaver(conn=db_conn)
 
 
