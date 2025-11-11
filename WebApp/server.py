@@ -121,7 +121,7 @@ async def upload_files(
         # ------------------------------------------------------------------
         # 3. PROCESS EACH RESUME
         # ------------------------------------------------------------------
-        all_analysis_data = ""
+        
 
         for idx, resume_file in enumerate(resume_files):
             if not resume_file.filename:
@@ -183,11 +183,7 @@ async def upload_files(
 
                 logger.info(f"[THREAD {thread_id}] Resume {idx} analysis completed")
 
-                # Build analysis string for state
-                all_analysis_data += f"""
-                ANALYSIS :- {analysis_summary}
-                FITSCORE :- {fit_score}
-                """ + "\n"
+                
 
                 # Insert into DB
                 insert_extracted_data(
@@ -247,7 +243,6 @@ async def upload_files(
         initial_state = {
             "messages": [],
             "thread_id" : thread_id,
-            "analyzed_resume_data": all_analysis_data.strip(),
             "job_description": job_description_data,
             "sql_retrieval" : ""
         }

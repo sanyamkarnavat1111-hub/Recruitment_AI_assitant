@@ -7,7 +7,6 @@ from langgraph.graph.message import add_messages
 class ChatState(TypedDict):
     messages: Annotated[list[AnyMessage], add_messages]
     thread_id : str
-    analyzed_resume_data : str
     job_description : str
     sql_retrieval : str
 

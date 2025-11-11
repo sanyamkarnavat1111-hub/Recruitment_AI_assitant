@@ -56,7 +56,6 @@ def database_retriever(state: ChatState) -> ChatState:
 
 def query(state: ChatState) -> ChatState:
     user_question = state["messages"][-1].content
-    analyzed_resume_data = state.get("analyzed_resume_data", "")
     job_description = state.get("job_description", "")
     sql_retrieval = state.get("sql_retrieval", "No additional database info.")
 
@@ -66,10 +65,6 @@ def query(state: ChatState) -> ChatState:
 
         Use this information to answer note that some or all information may not be relevant so answer honestly
         based on whatever information you have amd keep the answer short and concise:
-
-        
-        1. Resume Analysis: 
-        {analyzed_resume_data}
 
         2. Job Description:
         {job_description}
@@ -82,7 +77,6 @@ def query(state: ChatState) -> ChatState:
 
     chain = prompt | chat_llm | StrOutputParser()
     response = chain.invoke({
-        "analyzed_resume_data": analyzed_resume_data,
         "job_description": job_description,
         "sql_retrieval": sql_retrieval,
         "user_question": user_question
