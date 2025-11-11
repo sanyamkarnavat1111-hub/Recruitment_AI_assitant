@@ -1,5 +1,6 @@
 
 
+# Enable streaming in the chat and response generation
 
 # Add a progress bar while uploading resume to showcase progress of upload , analysis and data extraction
 
