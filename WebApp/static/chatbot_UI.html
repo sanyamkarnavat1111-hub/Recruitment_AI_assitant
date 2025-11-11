@@ -461,7 +461,7 @@
   </div>
 
   <script>
-    const threadId = crypto.randomUUID();
+    const threadId = window.crypto.randomUUID();
 
     // DOM
     const uploadSection = document.getElementById('upload-section');
@@ -553,7 +553,7 @@
       uploadBtn.innerHTML = '<i class="fas fa-spinner fa-spin"></i> Uploading...';
 
       try {
-        const BASE_URL = ' https://4fe9e3cc82a3.ngrok-free.app'+ '/upload' ;
+        const BASE_URL = window.location.origin + '/upload' ;
         const res = await fetch(BASE_URL, {
           method: 'POST',
           body: form
