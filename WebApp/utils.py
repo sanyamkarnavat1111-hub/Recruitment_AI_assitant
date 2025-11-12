@@ -122,8 +122,6 @@ def analyze_resume(extracted_resume_data: dict, job_description: str):
     analysis_prompt = ChatPromptTemplate.from_messages([
         ("system", """
         You are a senior technical recruiter and resume screening expert, with extensive experience in high-volume hiring for Fortune 500 companies. 
-        You are extremely rigorous, data-driven, and unflinchingly honest in your evaluation. 
-        Never sugarcoat weaknesses and never assume unstated skills. 
         Only evaluate based on explicit evidence in the resume and job description.
         """),
 
@@ -137,7 +135,9 @@ def analyze_resume(extracted_resume_data: dict, job_description: str):
         ## YOUR TASK:
         Perform a deep analysis of the extracted resume data against the job description:- 
         - Calculate a fit score from 0 to 10 based on how well the candidate aligns with the job requirements 
-        (like if skills mentioned , total years of experience is greater than or equal , previous work experience is good enough to match the requirement in job description.
+        (like if skills mentioned , total years of experience is greater than or equal , previous work experience is good enough to match the requirement in job description ,
+        It is fine if only few skills do not match , look for key skills required for the job role in job description and experience of candidate with the past work experience to give fit score.
+
         - Provide a short summary of your analysis, detailing the specific criteria and reasoning you used to evaluate the candidate.
         """)
     ])
