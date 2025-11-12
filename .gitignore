@@ -12,3 +12,4 @@ Uploads/
 *.parquet
 *.csv
 *.arrow
+*.pkl

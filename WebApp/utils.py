@@ -135,10 +135,10 @@ def analyze_resume(extracted_resume_data: dict, job_description: str):
         {formatted_extracted_data}
 
         ## YOUR TASK:
-        1. Perform a forensic-level analysis of the extracted resume data against the job description.
-        2. Calculate a fit score from 0 to 10 based on how well the candidate aligns with the job requirements.
-        3. Provide a short summary of your analysis, detailing the specific criteria and reasoning you used to evaluate the candidate.
-        4. Conclude with a brief opinion on how well the candidate fits the job.
+        Perform a deep analysis of the extracted resume data against the job description:- 
+        - Calculate a fit score from 0 to 10 based on how well the candidate aligns with the job requirements 
+        (like if skills mentioned , total years of experience is greater than or equal , previous work experience is good enough to match the requirement in job description.
+        - Provide a short summary of your analysis, detailing the specific criteria and reasoning you used to evaluate the candidate.
         """)
     ])
 
@@ -168,7 +168,7 @@ def get_fittest_candidates(thread_id: str) -> str:
 
         query = """
         SELECT candidate_name, email_address, total_experience, 
-               fit_score, analysis, ai_hire_probability 
+               fit_score, analysis 
         FROM users 
         WHERE thread_id = ? AND fit_score >= 4
         ORDER BY fit_score DESC
@@ -198,18 +198,16 @@ def get_fittest_candidates(thread_id: str) -> str:
         result.append("═" * 60)
 
         for idx, row in enumerate(rows, start=1):
-            name, email, exp, score, analysis, prob = row
+            name, email, exp, score, analysis = row
 
             # Clean and format
             exp_str = f"{exp} year{'s' if exp != 1 else ''}" if exp else "N/A"
-            prob_str = f"{prob:.1f}%" if prob is not None else "N/A"
 
             candidate_block = [
                 f"{idx}. Name: {name}",
                 f"   Email: {email}",
                 f"   Experience: {exp_str}",
                 f"   Fit Score: {score:.1f}",
-                f"   AI Hire Probability: {prob_str}",
                 f"   Analysis: {analysis.strip() if analysis else 'No analysis'}"
             ]
             result.extend(candidate_block)
@@ -225,7 +223,8 @@ def get_fittest_candidates(thread_id: str) -> str:
 
         prompt = ChatPromptTemplate.from_template(
             '''
-            You are an expert HR analyst. Below is a list of **shortlisted candidates** with high fit scores (>7) for a job.
+            You are an expert HR analyst. Below is a list of **shortlisted candidates** for a job.
+            The fit score is assigned the candidate to denote how fit they are for the job role assigned
 
             **Candidate Data:**
             {shortlisted_data}

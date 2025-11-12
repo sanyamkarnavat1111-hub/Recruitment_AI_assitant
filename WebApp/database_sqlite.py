@@ -49,6 +49,8 @@ def create_table():
                 tid INTEGER PRIMARY KEY AUTOINCREMENT,
                 thread_id TEXT NOT NULL,
                 candidate_name TEXT,
+                contact_number TEXT,
+                location TEXT,
                 email_address TEXT,
                 linkedin_url TEXT,
                 total_experience INTEGER NOT NULL,
@@ -93,6 +95,8 @@ def insert_extracted_data(
     # Extract fields for DB
     thread_id = extracted_resume_data.get("thread_id", "")
     candidate_name = extracted_resume_data.get("candidate_name", "")
+    contact_number = extracted_resume_data.get("contact_number", "")
+    location = extracted_resume_data.get("location", "")
     email_address = extracted_resume_data.get("email_address", "")
     linkedin_url = extracted_resume_data.get("linkedin_url", "")
     total_experience = int(extracted_resume_data.get("total_experience", 0))
@@ -101,7 +105,7 @@ def insert_extracted_data(
     work_experience = extracted_resume_data.get("work_experience", "")
     projects = extracted_resume_data.get("projects", "")
     fit_score = extracted_resume_data.get("fit_score" , "")
-    analysis = extracted_resume_data.get("analysis" , "")
+    analysis = extracted_resume_data.get("analysis_summary" , "")
     ai_hire_probability = extracted_resume_data.get("ai_hire_probability" , "")
 
 
@@ -110,15 +114,16 @@ def insert_extracted_data(
         cur = conn.cursor()
         insert_query = '''
             INSERT INTO users (
-                thread_id, candidate_name, email_address,
+                thread_id, candidate_name, contact_number, location, email_address,
                 linkedin_url, total_experience, skills, education, work_experience,
                 projects,fit_score, analysis , ai_hire_probability
-            ) VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ? , ?)
+            ) VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ? ,? , ? , ? )
         '''
         values = (
-            thread_id, candidate_name, email_address, linkedin_url,
-            total_experience, skills, education, work_experience, 
-            projects,fit_score, analysis , ai_hire_probability
+            thread_id, candidate_name, contact_number , location,
+            email_address, linkedin_url,total_experience, skills,
+            education, work_experience,projects,fit_score, analysis ,
+            ai_hire_probability
         )
         cur.execute(insert_query, values)
         conn.commit()

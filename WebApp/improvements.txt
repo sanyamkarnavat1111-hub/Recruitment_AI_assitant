@@ -8,8 +8,6 @@
 (like if at the time of upload the candidate had 3 years of experience then after one years it should automatically update ) 
 
 
-# Add a field in database for shortlisted candidate and show their analysis on chat window
-
 # Suppose from the database if user wants to retreive candidate for other roles then it should suppor that as well
 (During job description upload if JD has requirement of data scientist but if our database has android developers then next time
 if HR asks to shortlist based on that then our bot should do it .)
