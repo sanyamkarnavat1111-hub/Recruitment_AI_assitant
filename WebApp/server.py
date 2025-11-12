@@ -7,11 +7,11 @@ from bot_graph import workflow
 from langchain_core.messages import HumanMessage, AIMessage
 import logging
 import tempfile
-from utils import parse_file, extract_data_from_resume, analyze_resume
+from utils import parse_file, extract_data_from_resume, analyze_resume , get_fittest_candidates
 from database_sqlite import insert_extracted_data, test_connection, drop_table, create_table
 from typing import List
 from dotenv import load_dotenv
-
+from Screening_AI import ScreenAI
 
 load_dotenv()
 
@@ -29,15 +29,14 @@ app.add_middleware(
     allow_headers=["*"],
 )
 
-STATIC = "static"
-os.makedirs(STATIC, exist_ok=True)
+
 
 
 # ====================== Homepage ======================
 @app.get("/")
 def homepage():
     try:
-        file_path = os.path.join(STATIC, "chatbot_UI.html")
+        file_path = os.path.join(os.environ['STATIC_DIR'], "chatbot_UI.html")
         if not os.path.exists(file_path):
             raise HTTPException(
                 status_code=status.HTTP_404_NOT_FOUND,
@@ -56,11 +55,15 @@ def homepage():
 
 # ====================== Upload Endpoint (Initialize Thread State) ======================
 @app.post("/upload")
-def upload_files(
+async def upload_files(
     resume_files: List[UploadFile] = File(..., description="Multiple resume files"),
     job_description_file: UploadFile = File(..., description="Single job description file"),
     thread_id: str = Form(...),
 ):
+    
+    AI = ScreenAI()
+
+
     if not thread_id or not thread_id.strip():
         raise HTTPException(
             status_code=status.HTTP_400_BAD_REQUEST,
@@ -101,7 +104,7 @@ def upload_files(
                 detail=f"Unsupported JD file type: .{ext}"
             )
 
-        raw_bytes = job_description_file.read()
+        raw_bytes = await job_description_file.read()
         if not raw_bytes:
             raise ValueError("Job description file is empty.")
 
@@ -141,7 +144,7 @@ def upload_files(
                         detail=f"Unsupported resume file type: .{ext} in file '{resume_file.filename}'"
                     )
 
-                raw_bytes = resume_file.read()
+                raw_bytes = await resume_file.read()
                 if not raw_bytes:
                     logger.warning(f"[THREAD {thread_id}] Resume {idx} is empty: {resume_file.filename}")
                     success["resumes"].append({
@@ -159,22 +162,14 @@ def upload_files(
                 logger.info(f"[THREAD {thread_id}] Resume {idx} temp file: {temp_resume_path}")
 
                 # Parse resume
-                parsed_text = parse_file(temp_resume_path)
+                parsed_resume_text = parse_file(temp_resume_path)
                 logger.info(f"[THREAD {thread_id}] Resume {idx} parsed: {resume_file.filename}")
 
                 # Extract data
-                extracted_resume_data = extract_data_from_resume(resume_data=parsed_text)
+                extracted_resume_data = extract_data_from_resume(resume_data=parsed_resume_text)
                 logger.info(f"[THREAD {thread_id}] Resume {idx} data extracted")
 
-                # Extract fields for DB
-                candidate_name = extracted_resume_data.get("candidate_name", "")
-                email_address = extracted_resume_data.get("email_address", "")
-                linkedin_url = extracted_resume_data.get("linkedin_url", "")
-                total_experience = int(extracted_resume_data.get("total_experience", 0))
-                skills = extracted_resume_data.get("skills", [])
-                education = extracted_resume_data.get("education", "")
-                work_experience = extracted_resume_data.get("work_experience", "")
-                projects = extracted_resume_data.get("projects", "")
+                
 
                 # Analyze resume
                 analysis_result = analyze_resume(
@@ -182,34 +177,56 @@ def upload_files(
                     job_description=job_description_data
                 )
 
-                fit_score = analysis_result['fit_score']
+                fit_score = int(analysis_result['fit_score'])
                 analysis_summary = analysis_result['analysis_summary']
+
 
                 logger.info(f"[THREAD {thread_id}] Resume {idx} analysis completed")
 
+
+                logger.info(f"Improving AI model and getting prediction ...")
+
+                # Improve AI # 
+                if fit_score > 7 :
+                    hire = 1
+                else:
+                    hire = 0
                 
+                # Use AI to get probability score of hire of candidate 
+                hire_probability = AI.predict_hiring_decision(
+                    resume_text=parsed_resume_text,
+                    job_description=job_description_data
+                )['Probability']
+
+                
+                AI.improve_model(
+                    resume_text=parsed_resume_text,
+                    job_description=job_description_data,
+                    true_label=hire
+                )
+
+                logger.info(f"AI model Updated ...")
+                
+                logger.info(f"Got hire probability from AI ...")
+
+                extracted_resume_data.update({
+                    "fit_score" : fit_score,
+                    "analysis_summary" : analysis_summary,
+                    "thread_id" : thread_id,
+                    "ai_hire_probability" : hire_probability
+                })
+
 
                 # Insert into DB
                 insert_extracted_data(
-                    thread_id=thread_id,
-                    candidate_name=candidate_name,
-                    email_address=email_address,
-                    linkedin_url=linkedin_url,
-                    total_experience=total_experience,
-                    skills=skills,
-                    education=education,
-                    work_experience=work_experience,
-                    projects=projects,
-                    job_description=job_description_data,
-                    fit_score=fit_score,
-                    analysis=analysis_summary
+                    extracted_resume_data=extracted_resume_data
                 )
 
                 processed_count += 1
                 success["resumes"].append({
                     "filename": resume_file.filename,
                     "parsed": True,
-                    "length": len(parsed_text)
+                    "length": len(parsed_resume_text)
                 })
                 logger.info(f"[THREAD {thread_id}] Resume {idx} saved to DB")
 
@@ -232,15 +249,21 @@ def upload_files(
                     os.unlink(temp_resume_path)
                     logger.info(f"[THREAD {thread_id}] Deleted resume temp file")
 
-        # ------------------------------------------------------------------
-        # 4. Validate & Initialize LangGraph State ONCE
-        # ------------------------------------------------------------------
+        
         if processed_count == 0:
             raise HTTPException(
                 status_code=status.HTTP_400_BAD_REQUEST,
                 detail="No resumes were successfully processed."
             )
 
+
+        # Get the fittest candidates response 
+        fittest_candidates = get_fittest_candidates(thread_id=thread_id)
+
+
+        # ------------------------------------------------------------------
+        # 4. Validate & Initialize LangGraph State ONCE
+        # ------------------------------------------------------------------
         config = {"configurable": {"thread_id": thread_id}}
 
         # Initialize state only once
@@ -266,7 +289,8 @@ def upload_files(
             "resume_count": len(resume_files),
             "processed_count": processed_count,
             "failed_count": len(failed_analyses),
-            "failed_analyses": failed_analyses if failed_analyses else None
+            "failed_analyses": failed_analyses if failed_analyses else None,
+            "fittest_candidates" : fittest_candidates
         })
 
     except HTTPException:
@@ -344,6 +368,10 @@ def health_check():
 
 # ====================== Run Server ======================
 if __name__ == "__main__":
+
+    
+
+
     test_connection()
     drop_table()
     create_table()

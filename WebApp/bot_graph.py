@@ -49,7 +49,7 @@ def database_retriever(state: ChatState) -> ChatState:
     # CRITICAL: Return original messages + new state
     return {
         "sql_retrieval": output,
-        "messages": state["messages"]  # ← PRESERVE FULL HISTORY!
+        "messages": state["messages"]
     }
 
     

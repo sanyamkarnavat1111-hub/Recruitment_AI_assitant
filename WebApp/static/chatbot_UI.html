@@ -435,7 +435,7 @@
 
       <!-- Modified Resume Upload: Multiple Files -->
       <div class="upload-group">
-        <label class="upload-label">Upload Resumes (Multiple allowed)</label>
+        <label class="upload-label">Upload Resumes</label>
         <div class="file-upload-wrapper">
           <input type="file" id="resume-file" class="file-upload" accept=".pdf,.doc,.docx,.txt" multiple />
           <div class="file-upload-btn"><i class="fas fa-cloud-upload-alt"></i> Choose Files</div>
@@ -553,7 +553,7 @@
       uploadBtn.innerHTML = '<i class="fas fa-spinner fa-spin"></i> Uploading...';
 
       try {
-        const BASE_URL = window.location.origin + '/upload' ;
+        const BASE_URL = window.location.origin + '/upload';
         const res = await fetch(BASE_URL, {
           method: 'POST',
           body: form
@@ -574,6 +574,10 @@
           if (data.failed_count > 0) {
             const failMsg = `⚠️ ${data.failed_count} resume(s) failed to process.`;
             addMessage('ai', failMsg);
+          }
+          // 3. Fittest-candidate LLM summary  
+          if (data.fittest_candidates) {
+            addMessage('ai', data.fittest_candidates);
           }
         } else {
           alert(`Upload failed: ${data.error || 'Please try again.'}`);
@@ -600,7 +604,7 @@
       form.append('query', text);
 
       try {
-        const BASE_URL = window.location.origin + '/query' ;
+        const BASE_URL = window.location.origin + '/query';
         const res = await fetch(BASE_URL, { method: 'POST', body: form });
         const data = await res.json();
         addMessage('ai', data.response || 'No response from server.');

@@ -7,9 +7,11 @@ from langchain_community.document_loaders import (
     TextLoader
 )
 from langchain_core.prompts import ChatPromptTemplate
-from LLM_models import llm_resume_data_extractor , llm_sentiment_analyzer , llm_resume_analysis
-from typing import Literal
+from langchain_core.output_parsers import StrOutputParser
+from LLM_models import llm_resume_data_extractor , llm_resume_analysis , chat_llm
 from tenacity import retry , stop_after_attempt , wait_fixed
+from database_sqlite import get_db_connection
+
 
 def parse_file(file_path: str) -> str:
     """
@@ -87,55 +89,23 @@ def extract_data_from_resume(resume_data: str) -> dict:
             "work_experience": result.work_experience,
             "projects": result.projects
         }
-
-
-def classify_query(query: str) -> Literal["hr", "general"]:
-    prompt = ChatPromptTemplate.from_template(
-        """
-        You are an AI assistant specializing in recruitment and human resources.
-
-        Your task is to classify the following user query into one of two categories:
-        - hr :- The query is related to hiring, recruitment, jobs, human resources, onboarding, employee management, benefits, payroll, or related HR topics.
-        - general :- The query is about anything else not related to HR.
-
-        Return only one word as your answer: either "hr" or "general".
-        - User might ask for analysis , providing the rat
-
-        User Query:
-        {user_query}
-        """
-    )
-    classify_chain = prompt | llm_sentiment_analyzer
-
-    result = classify_chain.invoke({"user_query": query})
-    return result
     
 
 def analyze_resume(extracted_resume_data: dict, job_description: str):
     # Extract data from the resume dictionary
-    candidate_name = extracted_resume_data.get("candidate_name", "")
-    email_address = extracted_resume_data.get("email_address", "")
-    linkedin_url = extracted_resume_data.get("linkedin_url", "")
+    
     total_experience = int(extracted_resume_data.get("total_experience", 0))
     skills = extracted_resume_data.get("skills", [])
-    education = extracted_resume_data.get("education", "")
     work_experience = extracted_resume_data.get("work_experience", "")
     projects = extracted_resume_data.get("projects", "")
 
     # Format the extracted resume data into a structured string for the model
     formatted_extracted_data = f"""
-    # Candidate Information:
-    - Name: {candidate_name}
-    - Email: {email_address}
-    - LinkedIn: {linkedin_url}
     # Total Experience:
     - {total_experience} years
 
     # Skills:
     - {', '.join(skills) if skills else "None provided"}
-
-    # Education:
-    - {education if education else "No education details provided"}
 
     # Work Experience:
     - {work_experience if work_experience else "No work experience provided"}
@@ -162,7 +132,7 @@ def analyze_resume(extracted_resume_data: dict, job_description: str):
 
         ## YOUR TASK:
         1. Perform a forensic-level analysis of the extracted resume data against the job description.
-        2. Calculate a fit score from 0 to 100 based on how well the candidate aligns with the job requirements.
+        2. Calculate a fit score from 0 to 10 based on how well the candidate aligns with the job requirements.
         3. Provide a short summary of your analysis, detailing the specific criteria and reasoning you used to evaluate the candidate.
         4. Conclude with a brief opinion on how well the candidate fits the job.
         """)
@@ -183,3 +153,101 @@ def analyze_resume(extracted_resume_data: dict, job_description: str):
         "analysis_summary": analysis_result.analysis_summary
     }
 
+
+def get_fittest_candidates(thread_id: str) -> str:
+    """
+    Fetch candidates with fit_score > 7 and return a formatted string (row-wise).
+    """
+    try:
+        conn = get_db_connection()
+        cursor = conn.cursor()
+
+        query = """
+        SELECT candidate_name, email_address, total_experience, 
+               fit_score, analysis, ai_hire_probability 
+        FROM users 
+        WHERE thread_id = ? AND fit_score >= 4
+        ORDER BY fit_score DESC
+        """
+        cursor.execute(query, (thread_id,))
+        rows = cursor.fetchall()
+
+        if not rows:
+            
+            # Not canidates found fit score greater than 7 
+            prompt = ChatPromptTemplate.from_template(
+                '''
+                You are a shortlisting HR AI assisstant but you didn't found any candidate fit for given 
+                job description , generate a very short message saying that none of the candidates are fit 
+                for the given job description . Also provide one liner follow up question which user can ask you in return.
+                '''
+            )
+
+            chain = prompt | chat_llm | StrOutputParser()
+
+            response = chain.invoke({})
+
+            return response
+
+        # Start building formatted string
+        result = ["FITTEST CANDIDATES"]
+        result.append("═" * 60)
+
+        for idx, row in enumerate(rows, start=1):
+            name, email, exp, score, analysis, prob = row
+
+            # Clean and format
+            exp_str = f"{exp} year{'s' if exp != 1 else ''}" if exp else "N/A"
+            prob_str = f"{prob:.1f}%" if prob is not None else "N/A"
+
+            candidate_block = [
+                f"{idx}. Name: {name}",
+                f"   Email: {email}",
+                f"   Experience: {exp_str}",
+                f"   Fit Score: {score:.1f}",
+                f"   AI Hire Probability: {prob_str}",
+                f"   Analysis: {analysis.strip() if analysis else 'No analysis'}"
+            ]
+            result.extend(candidate_block)
+            result.append("")  # blank line between candidates
+
+        result.append("═" * 60)
+        result.append(f"Total: {len(rows)} candidate{'s' if len(rows) != 1 else ''} above threshold.")
+        
+        formatted_shortlisted_data = "\n".join(result)
+
+        ###########   Langchain workflow   ############
+
+
+        prompt = ChatPromptTemplate.from_template(
+            '''
+            You are an expert HR analyst. Below is a list of **shortlisted candidates** with high fit scores (>7) for a job.
+
+            **Candidate Data:**
+            {shortlisted_data}
+
+            ---
+
+            Write a **concise 3–4 sentence summary** highlighting:Name of candidates , their email address .Average fit score and AI hire probability , Key strengths (e.g., experience, skills)
+            At the end suggest and provide one liner follow-up questions the user can ask you as follow up .
+
+            '''
+        )
+
+        chain = prompt | chat_llm | StrOutputParser()
+
+        response = chain.invoke({
+            "shortlisted_data": formatted_shortlisted_data
+        }).strip()
+
+        
+        return response
+
+    except Exception as e:
+        error_msg = f"Error in get_fittest_candidates: {e}"
+        print(error_msg)
+        return error_msg
+
+    finally:
+        if conn:
+            conn.close()

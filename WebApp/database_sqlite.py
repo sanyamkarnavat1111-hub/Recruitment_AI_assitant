@@ -56,9 +56,9 @@ def create_table():
                 education TEXT,
                 work_experience TEXT,
                 projects TEXT,
-                job_description TEXT,
                 fit_score INTEGER NOT NULL,
-                analysis TEXT
+                analysis TEXT,
+                ai_hire_probability REAL NOT NULL
             )
         ''')
         conn.commit()
@@ -86,20 +86,25 @@ def drop_table():
 
 
 def insert_extracted_data(
-    thread_id: str,
-    candidate_name: str,
-    email_address: str,
-    linkedin_url: str,
-    total_experience: int,
-    skills: str,
-    education: str,
-    work_experience: str,
-    projects: str,
-    job_description :str,
-    fit_score: int,
-    analysis: str,
+    extracted_resume_data : dict
 ):
     """Insert a new candidate record."""
+
+    # Extract fields for DB
+    thread_id = extracted_resume_data.get("thread_id", "")
+    candidate_name = extracted_resume_data.get("candidate_name", "")
+    email_address = extracted_resume_data.get("email_address", "")
+    linkedin_url = extracted_resume_data.get("linkedin_url", "")
+    total_experience = int(extracted_resume_data.get("total_experience", 0))
+    skills = extracted_resume_data.get("skills", [])
+    education = extracted_resume_data.get("education", "")
+    work_experience = extracted_resume_data.get("work_experience", "")
+    projects = extracted_resume_data.get("projects", "")
+    fit_score = extracted_resume_data.get("fit_score" , "")
+    analysis = extracted_resume_data.get("analysis" , "")
+    ai_hire_probability = extracted_resume_data.get("ai_hire_probability" , "")
+
+
     conn = get_db_connection()
     try:
         cur = conn.cursor()
@@ -107,13 +112,13 @@ def insert_extracted_data(
             INSERT INTO users (
                 thread_id, candidate_name, email_address,
                 linkedin_url, total_experience, skills, education, work_experience,
-                projects, job_description,fit_score, analysis
-            ) VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?)
+                projects,fit_score, analysis , ai_hire_probability
+            ) VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ? , ?)
         '''
         values = (
             thread_id, candidate_name, email_address, linkedin_url,
-            total_experience, skills, education, work_experience, projects,
-            job_description, fit_score, analysis
+            total_experience, skills, education, work_experience, 
+            projects,fit_score, analysis , ai_hire_probability
         )
         cur.execute(insert_query, values)
         conn.commit()
@@ -179,10 +184,6 @@ if __name__ == "__main__":
     # Uncomment to reset or test
     # drop_table()
     # truncate()
-
-    # Example insert (remove or adjust for production)
-    # insert_extracted_data("t1", "Alice", "alice@example.com", "https://linkedin.com/alice", 5, "Python, SQL", "BSc CS", "3 years dev", "2 projects", 85, "Strong fit")
-
     all_rows = get_all_data()
     if all_rows:
         for row in all_rows:

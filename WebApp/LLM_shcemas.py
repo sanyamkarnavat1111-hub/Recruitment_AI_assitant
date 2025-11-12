@@ -20,10 +20,6 @@ class ExtractResumeDataSchema(BaseModel):
     work_experience: str = Field(..., description="Work experience summaries")
     projects: str = Field(..., description="Project summaries")
 
-
-class ClassifyQuery(BaseModel):
-    sentiment : Literal['hr','general'] = Field(... , description="classify the query of user if it is related to human resource related or not.")
-
 class ResumeAnalysis(BaseModel):
     fit_score : int = Field(... , description="A fit score of the candidate.")
     analysis_summary : str = Field(... , description="A short and concise summary of analysis")
