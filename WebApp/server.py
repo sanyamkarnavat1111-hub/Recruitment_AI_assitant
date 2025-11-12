@@ -56,7 +56,7 @@ def homepage():
 
 # ====================== Upload Endpoint (Initialize Thread State) ======================
 @app.post("/upload")
-async def upload_files(
+def upload_files(
     resume_files: List[UploadFile] = File(..., description="Multiple resume files"),
     job_description_file: UploadFile = File(..., description="Single job description file"),
     thread_id: str = Form(...),
@@ -101,7 +101,7 @@ async def upload_files(
                 detail=f"Unsupported JD file type: .{ext}"
             )
 
-        raw_bytes = await job_description_file.read()
+        raw_bytes = job_description_file.read()
         if not raw_bytes:
             raise ValueError("Job description file is empty.")
 
@@ -141,7 +141,7 @@ async def upload_files(
                         detail=f"Unsupported resume file type: .{ext} in file '{resume_file.filename}'"
                     )
 
-                raw_bytes = await resume_file.read()
+                raw_bytes = resume_file.read()
                 if not raw_bytes:
                     logger.warning(f"[THREAD {thread_id}] Resume {idx} is empty: {resume_file.filename}")
                     success["resumes"].append({
