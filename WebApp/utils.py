@@ -170,7 +170,7 @@ def get_fittest_candidates(thread_id: str) -> str:
         SELECT candidate_name, email_address, total_experience, 
                fit_score, analysis 
         FROM users 
-        WHERE thread_id = ? AND fit_score >= 4
+        WHERE thread_id = ? AND fit_score >= 7
         ORDER BY fit_score DESC
         """
         cursor.execute(query, (thread_id,))

@@ -23,17 +23,20 @@ def database_retriever(state: ChatState) -> ChatState:
 
     # Build short history for context
     short_history = []
-    for msg in state['messages'][-12:]:
+    for msg in state['messages'][-10:]:
         role = "User" if msg.type == "human" else "Assistant"
         short_history.append(f"{role}: {msg.content}")
     history_str = "\n".join(short_history) if short_history else "No prior messages."
 
     prompt = f'''
     You are a secure HR database assistant. 
-    Use the thread_id in the WHERE clause to avoid data leakage.
+    Use the thread_id in the WHERE clause to avoid data leakage for filtering data and writing queries.
 
-    User query: {user_question}
-    Thread ID (must use in SQL): {thread_id}
+    # User query: {user_question}
+    
+    # Thread ID (must use in SQL): {thread_id}
+
+    # This is the job description for your reference
 
     --- Conversation so far ---
     {history_str}
@@ -62,17 +65,20 @@ def query(state: ChatState) -> ChatState:
     prompt = ChatPromptTemplate.from_messages([
         ("system", """
         You are a helpful HR assistant.
-
+        """),
+        ("human", """
         Use this information to answer note that some or all information may not be relevant so answer honestly
         based on whatever information you have amd keep the answer short and concise:
 
-        2. Job Description:
+         
+        # Job Description:
         {job_description}
 
-        3. Information retreived from Database agent
+        
+        # Information retreived from Database agent (Can be empty or non relevant so analyze carefully before referring and answering based on it.)
         {sql_retrieval}
-        """),
-        ("human", "{user_question}")
+         
+        {user_question}""")
     ])
 
     chain = prompt | chat_llm | StrOutputParser()
