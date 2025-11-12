@@ -64,8 +64,10 @@ def extract_data_from_resume(resume_data: str) -> dict:
         {resume_data}
 
         Ensure that you extract the following details:
-        - Name of the candidate if provided.
-        - Total years of experience.
+        - Name of the candidate if present.
+        - Contact or phone number present . 
+        - Location if present.
+        - Total years of experience(Calculate exact years of professional experience if multiple).
         - A list of all skills mentioned in the resume.
         - The candidate's email address (if mentioned).
         - The candidate's LinkedIn profile URL.
@@ -81,6 +83,8 @@ def extract_data_from_resume(resume_data: str) -> dict:
 
     return  {
             "candidate_name" : result.candidate_name,
+            "contact_number" : result.contact_number,
+            "location" : result.location,
             "email_address": result.email_address,  
             "linkedin_url": result.linkedin_url,  
             "total_experience": result.total_experience, 
