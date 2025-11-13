@@ -1,11 +1,11 @@
 # schemas.py
 from pydantic import BaseModel, Field 
 from typing import Optional , TypedDict , Annotated
-from langchain_core.messages import AnyMessage
+from langchain_core.messages import BaseMessage
 from langgraph.graph.message import add_messages
 
 class ChatState(TypedDict):
-    messages: Annotated[list[AnyMessage], add_messages]
+    messages: Annotated[list[BaseMessage], add_messages]
     thread_id : str
     job_description : str
     sql_retrieval : str

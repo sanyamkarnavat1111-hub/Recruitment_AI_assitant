@@ -105,7 +105,7 @@ def analyze_resume(extracted_resume_data: dict, job_description: str):
     # Extract data from the resume dictionary
     
     total_experience = int(extracted_resume_data.get("total_experience", 0))
-    skills = extracted_resume_data.get("skills", [])
+    skills = extracted_resume_data.get("skills", "No skills extracted")
     work_experience = extracted_resume_data.get("work_experience", "")
     projects = extracted_resume_data.get("projects", "")
 
@@ -115,7 +115,7 @@ def analyze_resume(extracted_resume_data: dict, job_description: str):
     - {total_experience} years
 
     # Skills:
-    - {', '.join(skills) if skills else "None provided"}
+    - {skills}
 
     # Work Experience:
     - {work_experience if work_experience else "No work experience provided"}

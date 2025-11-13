@@ -1,5 +1,5 @@
 from langgraph.graph import START, END, StateGraph
-from langchain_core.messages import AIMessage
+from langchain_core.messages import AIMessage , HumanMessage
 from langchain_core.output_parsers import StrOutputParser
 from langchain_core.prompts import ChatPromptTemplate
 from LLM_models import chat_llm
@@ -15,28 +15,29 @@ load_dotenv()
 
 
 def database_retriever(state: ChatState) -> ChatState:
-    user_question = state['messages'][-1].content
+    
     thread_id = state.get("thread_id")
 
-    # Build short history for context
-    short_history = []
-    for msg in state['messages'][-10:]:
-        role = "User" if msg.type == "human" else "Assistant"
-        short_history.append(f"{role}: {msg.content}")
-    history_str = "\n".join(short_history) if short_history else "No prior messages."
+    short_conversation_history = state['messages'][-10:]
+    conversation_history = ""
+    
+    for msg in short_conversation_history :
 
+        if isinstance(msg , HumanMessage):
+            conversation_history += f"Human -- {msg.content}"
+        else:
+            conversation_history += f"AI -- {msg.content}"
+    
     prompt = f'''
     You are a secure HR database assistant. 
     Use the thread_id in the WHERE clause to avoid data leakage for filtering data and writing queries.
-
-    # User query: {user_question}
     
     # Thread ID (must use in SQL): {thread_id}
 
     # This is the job description for your reference
 
-    --- Conversation so far ---
-    {history_str}
+    --- Conversation history so far ---
+    {conversation_history}
     --- End ---
 
     Return only factual data from the DB. 
@@ -49,13 +50,12 @@ def database_retriever(state: ChatState) -> ChatState:
     # CRITICAL: Return original messages + new state
     return {
         "sql_retrieval": output,
-        "messages": state["messages"]
+        "messages": AIMessage(content=output)
     }
 
     
 
 def query(state: ChatState) -> ChatState:
-    user_question = state["messages"][-1].content
     job_description = state.get("job_description", "")
     sql_retrieval = state.get("sql_retrieval", "No additional database info.")
 
@@ -75,14 +75,17 @@ def query(state: ChatState) -> ChatState:
         # Information retreived from Database agent (Can be empty or non relevant so analyze carefully before referring and answering based on it.)
         {sql_retrieval}
          
-        {user_question}""")
+         # These is the conversation history so far 
+
+        {conversation_history}
+        """)
     ])
 
     chain = prompt | chat_llm | StrOutputParser()
     response = chain.invoke({
         "job_description": job_description,
         "sql_retrieval": sql_retrieval,
-        "user_question": user_question
+        "conversation_history": state['messages']
     })
 
     return {"messages": [AIMessage(content=response)]}
