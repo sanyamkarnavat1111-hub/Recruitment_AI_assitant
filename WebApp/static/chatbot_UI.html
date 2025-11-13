@@ -10,374 +10,131 @@
   <script src="https://cdn.jsdelivr.net/npm/dompurify@3.1.6/dist/purify.min.js"></script>
   <style>
     /* ==== Reset & Base ==== */
-    * {
-      margin: 0;
-      padding: 0;
-      box-sizing: border-box;
-    }
-
-    body {
-      font-family: 'Inter', 'Segoe UI', sans-serif;
-      background: #f9fafb;
-      color: #1f2937;
-      line-height: 1.5;
-    }
-
-    .container {
-      max-width: 900px;
-      margin: 0 auto;
-      padding: 16px;
-      display: flex;
-      flex-direction: column;
-      height: 100vh;
-    }
+    * { margin:0; padding:0; box-sizing:border-box; }
+    body { font-family:'Inter', 'Segoe UI', sans-serif; background:#f9fafb; color:#1f2937; line-height:1.5; }
+    .container { max-width:900px; margin:0 auto; padding:16px; display:flex; flex-direction:column; height:100vh; }
 
     /* ==== Compact Header ==== */
     .header {
-      text-align: center;
-      padding: 16px 0;
-      border-bottom: 1px solid #e5e7eb;
-      background: #fff;
-      border-radius: 12px 12px 0 0;
-      margin-bottom: 16px;
-      box-shadow: 0 1px 3px rgba(0, 0, 0, .05);
+      text-align:center; padding:16px 0; border-bottom:1px solid #e5e7eb;
+      background:#fff; border-radius:12px 12px 0 0; margin-bottom:16px;
+      box-shadow:0 1px 3px rgba(0,0,0,.05);
     }
-
-    .greeting {
-      font-size: 1.8rem;
-      font-weight: 700;
-      color: #6d28d9;
-      margin-bottom: 4px;
-    }
-
-    .subtext {
-      font-size: 0.95rem;
-      color: #6b7280;
-    }
+    .greeting { font-size:1.8rem; font-weight:700; color:#6d28d9; margin-bottom:4px; }
+    .subtext { font-size:0.95rem; color:#6b7280; }
 
     /* ==== Upload Section ==== */
     .upload-section {
-      background: #fff;
-      border-radius: 12px;
-      padding: 20px;
-      margin-bottom: 16px;
-      box-shadow: 0 1px 3px rgba(0, 0, 0, .08);
-      display: flex;
-      flex-direction: column;
-      gap: 16px;
+      background:#fff; border-radius:12px; padding:20px; margin-bottom:16px;
+      box-shadow:0 1px 3px rgba(0,0,0,.08); display:flex; flex-direction:column; gap:16px;
     }
+    .upload-group { display:flex; flex-direction:column; gap:6px; }
+    .upload-label { font-size:0.9rem; font-weight:600; color:#374151; }
 
-    .upload-group {
-      display: flex;
-      flex-direction: column;
-      gap: 6px;
-    }
-
-    .upload-label {
-      font-size: 0.9rem;
-      font-weight: 600;
-      color: #374151;
-    }
-
-    .file-upload-wrapper {
-      position: relative;
-    }
-
-    .file-upload {
-      position: absolute;
-      opacity: 0;
-      width: 100%;
-      height: 100%;
-      cursor: pointer;
-    }
-
+    .file-upload-wrapper { position:relative; }
+    .file-upload { position:absolute; opacity:0; width:100%; height:100%; cursor:pointer; }
     .file-upload-btn {
-      display: flex;
-      align-items: center;
-      justify-content: center;
-      gap: 8px;
-      padding: 10px 16px;
-      background: #f3f4f6;
-      border: 2px dashed #9ca3af;
-      border-radius: 10px;
-      color: #4b5563;
-      font-size: 0.9rem;
-      font-weight: 500;
-      cursor: pointer;
-      transition: all .2s;
+      display:flex; align-items:center; justify-content:center; gap:8px;
+      padding:10px 16px; background:#f3f4f6; border:2px dashed #9ca3af;
+      border-radius:10px; color:#4b5563; font-size:0.9rem; font-weight:500;
+      cursor:pointer; transition:all .2s;
     }
+    .file-upload-btn:hover { background:#e5e7eb; border-color:#6d28d9; }
 
-    .file-upload-btn:hover {
-      background: #e5e7eb;
-      border-color: #6d28d9;
-    }
+    .file-name, .file-item span { font-size:0.85rem; color:#16a34a; margin-top:4px; }
+    .file-list { margin-top:6px; max-height:100px; overflow-y:auto; font-size:0.85rem; }
+    .file-item { display:flex; align-items:center; gap:8px; padding:4px 0; color:#16a34a; }
+    .file-item i { color:#dc2626; cursor:pointer; font-size:0.8rem; }
 
-    .file-name,
-    .file-item span {
-      font-size: 0.85rem;
-      color: #16a34a;
-      margin-top: 4px;
-    }
-
-    .file-list {
-      margin-top: 6px;
-      max-height: 100px;
-      overflow-y: auto;
-      font-size: 0.85rem;
-    }
-
-    .file-item {
-      display: flex;
-      align-items: center;
-      gap: 8px;
-      padding: 4px 0;
-      color: #16a34a;
-    }
-
-    .file-item i {
-      color: #dc2626;
-      cursor: pointer;
-      font-size: 0.8rem;
-    }
-
-    .upload-action {
-      display: flex;
-      justify-content: flex-end;
-      margin-top: 8px;
-    }
-
+    .upload-action { display:flex; flex-direction:column; gap:8px; margin-top:8px; }
     .upload-action button {
-      padding: 10px 20px;
-      background: #6d28d9;
-      color: #fff;
-      border: none;
-      border-radius: 8px;
-      font-weight: 600;
-      font-size: 0.9rem;
-      cursor: pointer;
-      display: flex;
-      align-items: center;
-      gap: 6px;
-      transition: all .2s;
+      padding:10px 20px; background:#6d28d9; color:#fff; border:none;
+      border-radius:8px; font-weight:600; font-size:0.9rem; cursor:pointer;
+      display:flex; align-items:center; justify-content:center; gap:6px; transition:all .2s;
     }
+    .upload-action button:hover { background:#5b21b6; }
+    .upload-action button:disabled { background:#9ca3af; cursor:not-allowed; }
 
-    .upload-action button:hover {
-      background: #5b21b6;
+    /* ==== Progress Bar ==== */
+    .progress-container {
+      width: 100%; height: 8px; background: #e5e7eb; border-radius: 8px; overflow: hidden;
+      position: relative; margin-bottom: 8px;
     }
-
-    .upload-action button:disabled {
-      background: #9ca3af;
-      cursor: not-allowed;
+    .progress-bar {
+      height: 100%; background: #6d28d9; width: 0; transition: width 0.2s ease;
+    }
+    .progress-text {
+      position: absolute; top: 0; left: 0; width: 100%; text-align: center;
+      font-size: 0.7rem; font-weight: 600; color: #4b5563; line-height: 8px;
+    }
+    .progress-message {
+      font-size: 0.85rem; color: #4b5563; text-align: center; margin-bottom: 8px;
     }
 
     /* ==== Persistent Resume Upload ==== */
-    .resume-persistent {
-      display: none;
-      background: #fff;
-      border-radius: 12px;
-      padding: 16px;
-      margin-bottom: 16px;
-      box-shadow: 0 1px 3px rgba(0, 0, 0, .08);
-    }
+    .resume-persistent { display:none; background:#fff; border-radius:12px; padding:16px; margin-bottom:16px;
+      box-shadow:0 1px 3px rgba(0,0,0,.08); }
 
     /* ==== Chat Container ==== */
     .chat-container {
-      flex: 1;
-      display: flex;
-      flex-direction: column;
-      background: #fff;
-      border-radius: 12px;
-      overflow: hidden;
-      box-shadow: 0 1px 3px rgba(0, 0, 0, .08);
-      margin-bottom: 16px;
+      flex:1; display:flex; flex-direction:column; background:#fff;
+      border-radius:12px; overflow:hidden; box-shadow:0 1px 3px rgba(0,0,0,.08);
+      margin-bottom:16px;
     }
-
     .chat-messages {
-      flex: 1;
-      padding: 20px;
-      overflow-y: auto;
-      display: flex;
-      flex-direction: column;
-      gap: 12px;
-      background: #f9fafb;
+      flex:1; padding:20px; overflow-y:auto; display:flex; flex-direction:column; gap:12px;
+      background:#f9fafb;
     }
-
     .message {
-      max-width: 78%;
-      padding: 10px 14px;
-      border-radius: 16px;
-      font-size: 0.95rem;
-      line-height: 1.5;
-      word-wrap: break-word;
+      max-width:78%; padding:10px 14px; border-radius:16px; font-size:0.95rem;
+      line-height:1.5; word-wrap:break-word;
     }
-
-    .user-message {
-      align-self: flex-end;
-      background: #6d28d9;
-      color: #fff;
-      border-bottom-right-radius: 4px;
-    }
-
-    .ai-message {
-      align-self: flex-start;
-      background: #f3f4f6;
-      color: #1f2937;
-      border-bottom-left-radius: 4px;
-    }
+    .user-message { align-self:flex-end; background:#6d28d9; color:#fff; border-bottom-right-radius:4px; }
+    .ai-message { align-self:flex-start; background:#f3f4f6; color:#1f2937; border-bottom-left-radius:4px; }
 
     /* ==== Input Area with Paperclip ==== */
     .input-area {
-      display: flex;
-      align-items: center;
-      padding: 12px 16px;
-      background: #fff;
-      border-top: 1px solid #e5e7eb;
-      gap: 10px;
+      display:flex; align-items:center; padding:12px 16px; background:#fff;
+      border-top:1px solid #e5e7eb; gap:10px;
     }
-
     .attach-btn {
-      width: 40px;
-      height: 40px;
-      background: #f3f4f6;
-      color: #6b7280;
-      border: none;
-      border-radius: 50%;
-      font-size: 1rem;
-      cursor: pointer;
-      display: flex;
-      align-items: center;
-      justify-content: center;
-      transition: all .2s;
+      width:40px; height:40px; background:#f3f4f6; color:#6b7280;
+      border:none; border-radius:50%; font-size:1rem; cursor:pointer;
+      display:flex; align-items:center; justify-content:center; transition:all .2s;
     }
-
-    .attach-btn:hover {
-      background: #e5e7eb;
-      color: #4b5563;
-    }
-
-    .attach-btn input {
-      display: none;
-    }
+    .attach-btn:hover { background:#e5e7eb; color:#4b5563; }
+    .attach-btn input { display:none; }
 
     .text-input {
-      flex: 1;
-      padding: 10px 16px;
-      font-size: 0.95rem;
-      border: 1px solid #d1d5db;
-      border-radius: 50px;
-      outline: none;
-      transition: all .2s;
+      flex:1; padding:10px 16px; font-size:0.95rem; border:1px solid #d1d5db;
+      border-radius:50px; outline:none; transition:all .2s;
     }
-
-    .text-input:focus {
-      border-color: #6d28d9;
-      box-shadow: 0 0 0 3px rgba(109, 40, 217, .1);
-    }
+    .text-input:focus { border-color:#6d28d9; box-shadow:0 0 0 3px rgba(109,40,217,.1); }
 
     .send-btn {
-      width: 40px;
-      height: 40px;
-      background: #6d28d9;
-      color: #fff;
-      border: none;
-      border-radius: 50%;
-      font-size: 1.1rem;
-      cursor: pointer;
-      display: flex;
-      align-items: center;
-      justify-content: center;
-      transition: all .2s;
+      width:40px; height:40px; background:#6d28d9; color:#fff; border:none;
+      border-radius:50%; font-size:1.1rem; cursor:pointer;
+      display:flex; align-items:center; justify-content:center; transition:all .2s;
     }
+    .send-btn:hover { background:#5b21b6; }
+    .send-btn:disabled { background:#9ca3af; cursor:not-allowed; }
 
-    .send-btn:hover {
-      background: #5b21b6;
-    }
-
-    .send-btn:disabled {
-      background: #9ca3af;
-      cursor: not-allowed;
-    }
-
-    /* ==== Clean File Pills in Chat Input ==== */
+    /* ==== File Pills ==== */
     .chat-file-preview {
-      padding: 0 16px 8px;
-      display: flex;
-      flex-wrap: wrap;
-      gap: 6px;
-      font-size: 0.8rem;
+      padding:0 16px 8px; display:flex; flex-wrap:wrap; gap:6px; font-size:0.8rem;
     }
-
     .chat-file-pill {
-      background: #e0e7ff;
-      color: #4f46e5;
-      padding: 4px 10px;
-      border-radius: 16px;
-      display: flex;
-      align-items: center;
-      gap: 6px;
-      font-weight: 500;
+      background:#e0e7ff; color:#4f46e5; padding:4px 10px; border-radius:16px;
+      display:flex; align-items:center; gap:6px; font-weight:500;
     }
+    .chat-file-pill i { cursor:pointer; color:#7c3aed; font-size:0.75rem; }
 
-    .chat-file-pill i {
-      cursor: pointer;
-      color: #7c3aed;
-      font-size: 0.75rem;
-    }
-
-    .hidden {
-      display: none !important;
-    }
-
-    /* ==== Markdown & Code ==== */
-    .ai-message pre {
-      background: #1f2937;
-      color: #e5e7eb;
-      padding: 12px;
-      border-radius: 8px;
-      overflow-x: auto;
-      font-size: 0.85rem;
-      margin: 8px 0;
-    }
-
-    .analysis-plain {
-      background: transparent;
-      padding: 0;
-      margin: 8px 0;
-      white-space: pre-wrap;
-    }
+    .hidden { display:none !important; }
 
     /* ==== Scrollbars ==== */
-    .chat-messages::-webkit-scrollbar,
-    .file-list::-webkit-scrollbar {
-      width: 5px;
-    }
-
-    .chat-messages::-webkit-scrollbar-track,
-    .file-list::-webkit-scrollbar-track {
-      background: transparent;
-    }
-
-    .chat-messages::-webkit-scrollbar-thumb,
-    .file-list::-webkit-scrollbar-thumb {
-      background: #d1d5db;
-      border-radius: 3px;
-    }
-
-    /* ==== Responsive ==== */
-    @media (max-width:640px) {
-      .container {
-        padding: 12px;
-      }
-
-      .greeting {
-        font-size: 1.6rem;
-      }
-
-      .upload-section,
-      .resume-persistent {
-        padding: 16px;
-      }
-    }
+    .chat-messages::-webkit-scrollbar, .file-list::-webkit-scrollbar { width:5px; }
+    .chat-messages::-webkit-scrollbar-track, .file-list::-webkit-scrollbar-track { background:transparent; }
+    .chat-messages::-webkit-scrollbar-thumb, .file-list::-webkit-scrollbar-thumb { background:#d1d5db; border-radius:3px; }
   </style>
 </head>
 
@@ -409,7 +166,13 @@
         <div id="resume-list" class="file-list" style="display:none;"></div>
       </div>
 
+      <!-- Progress + Button -->
       <div class="upload-action">
+        <div id="upload-progress" class="progress-container" style="display:none;">
+          <div class="progress-bar" id="progress-bar"></div>
+          <span id="progress-text" class="progress-text">0%</span>
+        </div>
+        <div id="progress-message" class="progress-message" style="display:none;"></div>
         <button id="upload-btn">Upload &amp; Analyze</button>
       </div>
     </section>
@@ -424,7 +187,13 @@
         </div>
         <div id="resume-list-persist" class="file-list" style="display:none;"></div>
       </div>
+
       <div class="upload-action">
+        <div id="upload-more-progress" class="progress-container" style="display:none;">
+          <div class="progress-bar" id="more-progress-bar"></div>
+          <span id="more-progress-text" class="progress-text">0%</span>
+        </div>
+        <div id="more-progress-message" class="progress-message" style="display:none;"></div>
         <button id="upload-resume-btn">Upload More</button>
       </div>
     </section>
@@ -433,7 +202,6 @@
     <section class="chat-container hidden" id="chat-section">
       <div class="chat-messages" id="chat-messages"></div>
 
-      <!-- Input with Paperclip + Clean File Pills -->
       <div class="input-area">
         <label class="attach-btn">
           <i class="fas fa-paperclip"></i>
@@ -451,35 +219,52 @@
     const threadId = window.crypto.randomUUID();
 
     // DOM
-    const uploadSection = document.getElementById('upload-section');
-    const resumePersistent = document.getElementById('resume-persistent');
-    const chatSection = document.getElementById('chat-section');
+    const uploadSection       = document.getElementById('upload-section');
+    const resumePersistent    = document.getElementById('resume-persistent');
+    const chatSection         = document.getElementById('chat-section');
 
-    const jdGroup = document.getElementById('jd-group');
-    const jdInput = document.getElementById('jd-file');
-    const jdName = document.getElementById('jd-name');
+    const jdGroup             = document.getElementById('jd-group');
+    const jdInput             = document.getElementById('jd-file');
+    const jdName              = document.getElementById('jd-name');
 
-    const resumeInput = document.getElementById('resume-file');
-    const resumeList = document.getElementById('resume-list');
-    const resumeInputPersist = document.getElementById('resume-file-persist');
-    const resumeListPersist = document.getElementById('resume-list-persist');
+    const resumeInput         = document.getElementById('resume-file');
+    const resumeList          = document.getElementById('resume-list');
+    const resumeInputPersist  = document.getElementById('resume-file-persist');
+    const resumeListPersist   = document.getElementById('resume-list-persist');
 
-    const uploadBtn = document.getElementById('upload-btn');
-    const uploadResumeBtn = document.getElementById('upload-resume-btn');
+    const uploadBtn           = document.getElementById('upload-btn');
+    const uploadResumeBtn     = document.getElementById('upload-resume-btn');
 
-    const userInput = document.getElementById('user-input');
-    const sendBtn = document.getElementById('send-btn');
-    const chatMessages = document.getElementById('chat-messages');
-    const chatFileInput = document.getElementById('chat-file-input');
-    const chatFilePreview = document.getElementById('chat-file-preview');
+    const userInput           = document.getElementById('user-input');
+    const sendBtn             = document.getElementById('send-btn');
+    const chatMessages        = document.getElementById('chat-messages');
+    const chatFileInput       = document.getElementById('chat-file-input');
+    const chatFilePreview     = document.getElementById('chat-file-preview');
 
-    let jdFile = null;
+    // Progress Elements
+    const progressEls = {
+      initial: {
+        container: document.getElementById('upload-progress'),
+        bar: document.getElementById('progress-bar'),
+        text: document.getElementById('progress-text'),
+        message: document.getElementById('progress-message')
+      },
+      more: {
+        container: document.getElementById('upload-more-progress'),
+        bar: document.getElementById('more-progress-bar'),
+        text: document.getElementById('more-progress-text'),
+        message: document.getElementById('more-progress-message')
+      }
+    };
+
+    let jdFile      = null;
     let resumeFiles = [];
-    let jdUploaded = false;
+    let jdUploaded  = false;
     let chatStarted = false;
-    let chatFiles = [];
+    let chatFiles   = [];
+    let currentEventSource = null;
 
-    /* ====================== JD & Resume ====================== */
+    /* ====================== JD & Resume Setup ====================== */
     jdInput.addEventListener('change', e => {
       jdFile = e.target.files[0] || null;
       jdName.textContent = jdFile?.name ?? '';
@@ -530,7 +315,138 @@
       uploadResumeBtn.disabled = !hasResumes;
     }
 
-    /* ====================== Chat File Upload (Paperclip) ====================== */
+    /* ====================== UPLOAD WITH SSE PROGRESS ====================== */
+    async function startResumeUpload(type) {
+      const els = progressEls[type];
+      els.container.style.display = 'block';
+      els.bar.style.width = '0%';
+      els.text.textContent = '0%';
+      els.message.style.display = 'block';
+      els.message.textContent = 'Starting...';
+
+      const form = new FormData();
+      form.append('thread_id', threadId);
+      resumeFiles.forEach(f => form.append('resume_files', f));
+
+      try {
+        const res = await fetch(`${window.location.origin}/upload_resume`, {
+          method: 'POST',
+          body: form
+        });
+        if (!res.ok) throw new Error(await res.text());
+        const { task_id } = await res.json();
+
+        // Close any existing stream
+        if (currentEventSource) currentEventSource.close();
+
+        currentEventSource = new EventSource(`${window.location.origin}/progress/${task_id}`);
+
+        currentEventSource.onmessage = (e) => {
+          const data = JSON.parse(e.data);
+          if (data.error) {
+            currentEventSource.close();
+            throw new Error(data.error);
+          }
+          if (data.progress !== undefined) {
+            els.bar.style.width = `${data.progress}%`;
+            els.text.textContent = `${data.progress}%`;
+            if (data.message) els.message.textContent = data.message;
+          }
+          if (data.status === 'completed') {
+            currentEventSource.close();
+            handleUploadComplete(data.data, type);
+          } else if (data.status === 'failed') {
+            currentEventSource.close();
+            throw new Error(data.message || 'Upload failed');
+          }
+        };
+
+        currentEventSource.onerror = () => {
+          currentEventSource.close();
+          throw new Error('Connection lost');
+        };
+
+      } catch (err) {
+        els.container.style.display = 'none';
+        els.message.style.display = 'none';
+        alert(err.message);
+        throw err;
+      }
+    }
+
+    function handleUploadComplete(data, type) {
+      const els = progressEls[type];
+      clearResumeUI();
+
+      if (type === 'initial' && !chatStarted) {
+        uploadSection.classList.add('hidden');
+        resumePersistent.style.display = 'block';
+        chatSection.classList.remove('hidden');
+        chatStarted = true;
+      }
+
+      addMessage('ai', `Processed ${data.processed_count} resume(s).`);
+      if (data.failed_count > 0) addMessage('ai', `${data.failed_count} failed.`);
+      if (data.fittest_candidates) addMessage('ai', data.fittest_candidates);
+
+      // Hide progress
+      els.container.style.display = 'none';
+      els.message.style.display = 'none';
+    }
+
+    /* ====================== INITIAL UPLOAD ====================== */
+    uploadBtn.addEventListener('click', async () => {
+      if (uploadBtn.disabled) return;
+      uploadBtn.disabled = true;
+      uploadBtn.innerHTML = 'Starting...';
+
+      try {
+        if (!jdUploaded) {
+          await uploadJD();
+          jdUploaded = true;
+          jdGroup.style.display = 'none';
+          jdName.style.display = 'none';
+          jdInput.value = '';
+          jdFile = null;
+        }
+        await startResumeUpload('initial');
+      } catch (err) {
+        // Handled in startResumeUpload
+      } finally {
+        uploadBtn.disabled = false;
+        uploadBtn.innerHTML = 'Upload &amp; Analyze';
+        toggleButtons();
+      }
+    });
+
+    /* ====================== UPLOAD MORE ====================== */
+    uploadResumeBtn.addEventListener('click', async () => {
+      if (uploadResumeBtn.disabled) return;
+      uploadBtn.disabled = true;
+      uploadResumeBtn.innerHTML = 'Starting...';
+
+      try {
+        await startResumeUpload('more');
+      } catch (err) {
+        // Handled
+      } finally {
+        uploadResumeBtn.disabled = false;
+        uploadResumeBtn.innerHTML = 'Upload More';
+        toggleButtons();
+      }
+    });
+
+    /* ====================== UPLOAD JD ====================== */
+    async function uploadJD() {
+      const form = new FormData();
+      form.append('thread_id', threadId);
+      form.append('job_description_file', jdFile);
+      const res = await fetch(`${window.location.origin}/upload_job_description`, { method: 'POST', body: form });
+      if (!res.ok) throw new Error(`JD upload failed`);
+      return res.json();
+    }
+
+    /* ====================== CHAT FILE UPLOAD ====================== */
     chatFileInput.addEventListener('change', e => {
       chatFiles = [...chatFiles, ...Array.from(e.target.files)];
       renderChatFilePills();
@@ -567,79 +483,7 @@
       return res.json();
     }
 
-    /* ====================== Upload JD & Resumes ====================== */
-    async function uploadJD() {
-      const form = new FormData();
-      form.append('thread_id', threadId);
-      form.append('job_description_file', jdFile);
-      const res = await fetch(`${window.location.origin}/upload_job_description`, { method: 'POST', body: form });
-      if (!res.ok) throw new Error(`JD upload failed`);
-      return res.json();
-    }
-
-    async function uploadResumes() {
-      const form = new FormData();
-      form.append('thread_id', threadId);
-      resumeFiles.forEach(f => form.append('resume_files', f));
-      const res = await fetch(`${window.location.origin}/upload_resume`, { method: 'POST', body: form });
-      if (!res.ok) throw new Error(`Resume upload failed`);
-      return res.json();
-    }
-
-    uploadBtn.addEventListener('click', async () => {
-      if (uploadBtn.disabled) return;
-      uploadBtn.disabled = true;
-      uploadBtn.innerHTML = 'Uploading…';
-
-      try {
-        if (!jdUploaded) {
-          await uploadJD();
-          jdUploaded = true;
-          jdGroup.style.display = 'none';
-          jdName.style.display = 'none';
-          jdInput.value = '';
-          jdFile = null;
-        }
-        const data = await uploadResumes();
-        clearResumeUI();
-
-        if (!chatStarted) {
-          uploadSection.classList.add('hidden');
-          resumePersistent.style.display = 'block';
-          chatSection.classList.remove('hidden');
-          chatStarted = true;
-        }
-
-        addMessage('ai', `Processed ${data.processed_count} resume(s).`);
-        if (data.fittest_candidates) addMessage('ai', data.fittest_candidates);
-      } catch (err) { alert(err.message); }
-      finally {
-        uploadBtn.disabled = false;
-        uploadBtn.innerHTML = 'Upload &amp; Analyze';
-        toggleButtons();
-      }
-    });
-
-    uploadResumeBtn.addEventListener('click', async () => {
-      if (uploadResumeBtn.disabled) return;
-      uploadResumeBtn.disabled = true;
-      uploadResumeBtn.innerHTML = 'Uploading…';
-      try {
-        const data = await uploadResumes();
-        clearResumeUI();
-        addMessage('ai', `+${data.processed_count} resume(s) added.`);
-        if (data.fittest_candidates) {
-          addMessage('ai', data.fittest_candidates);  // Now shown on every upload
-        }
-      } catch (err) { alert(err.message); }
-      finally {
-        uploadResumeBtn.disabled = false;
-        uploadResumeBtn.innerHTML = 'Upload More';
-        toggleButtons();
-      }
-    });
-
-    /* ====================== Send Message ====================== */
+    /* ====================== SEND MESSAGE ====================== */
     async function sendMessage() {
       const text = userInput.value.trim();
       if (!text && !chatFiles.length) return;
