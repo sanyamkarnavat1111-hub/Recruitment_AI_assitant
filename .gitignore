@@ -14,3 +14,4 @@ Uploads/
 *.arrow
 AI_Model/
 *.bin
+*.sqlite3

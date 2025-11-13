@@ -197,7 +197,7 @@ def get_fittest_candidates(thread_id: str) -> str:
 
         all_evaluated_tid = []
         for idx, row in enumerate(non_evaluated_candidates, start=1):
-            tid,name, email, exp, score, analysis , shorlisted = row
+            tid,name, exp, score, analysis , shorlisted = row
 
             shorlisted = int(shorlisted)
 
@@ -206,7 +206,6 @@ def get_fittest_candidates(thread_id: str) -> str:
 
             candidate_block = [
                 f"{idx}. Name: {name}",
-                f"   Email: {email}",
                 f"   Experience: {exp_str}",
                 f"   Fit Score: {score:.1f}",
                 f"   Analysis: {analysis.strip() if analysis else 'No analysis'}"

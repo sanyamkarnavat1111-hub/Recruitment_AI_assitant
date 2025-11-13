@@ -1,5 +1,4 @@
 from langchain_chroma import Chroma
-from utils import parse_file
 from langchain_text_splitters import RecursiveCharacterTextSplitter
 from LLM_models import gemini_embeddings
 import os
