@@ -69,7 +69,8 @@ def create_table():
                 fit_score INTEGER NOT NULL,
                 resume_analysis_summary TEXT,
                 ai_hire_probability REAL NOT NULL,
-                evaluated INTEGER
+                evaluated INTEGER NOT NULL,
+                shortlisted INTEGER NOT NULL
             )
         ''')
         conn.commit()
@@ -132,6 +133,7 @@ def insert_extracted_data(
         resume_analysis_summary = extracted_resume_data.get("resume_analysis_summary" , "")
         ai_hire_probability = extracted_resume_data.get("ai_hire_probability" , "")
         evaluated = int(extracted_resume_data.get("evaluated" , 0))
+        shorlisted = int(extracted_resume_data.get("shortlisted" , 0))
 
         conn = get_db_connection()
 
@@ -140,14 +142,14 @@ def insert_extracted_data(
             INSERT INTO users (
                 thread_id, candidate_name, contact_number, location, email_address,
                 linkedin_url, total_experience, skills, education, work_experience,
-                projects,fit_score, resume_analysis_summary , ai_hire_probability , evaluated
-            ) VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ? ,? , ? , ? , ?)
+                projects,fit_score, resume_analysis_summary , ai_hire_probability , evaluated , shortlisted
+            ) VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ? ,? , ? , ? , ? , ? )
         '''
         values = (
             thread_id, candidate_name, contact_number , location,
             email_address, linkedin_url,total_experience, skills,
             education, work_experience,projects,fit_score, resume_analysis_summary ,
-            ai_hire_probability , evaluated
+            ai_hire_probability , evaluated , shorlisted
         )
         cur.execute(insert_query, values)
         conn.commit()
@@ -191,7 +193,7 @@ def get_non_evluated_candidates(thread_id : str ):
         cursor = conn.cursor()
 
         query = """
-            SELECT tid , candidate_name, email_address, total_experience, fit_score, resume_analysis_summary 
+            SELECT tid , candidate_name, email_address, total_experience, fit_score, resume_analysis_summary , shortlisted 
             FROM users 
             WHERE thread_id = ? AND evaluated = 0
             ORDER BY fit_score DESC

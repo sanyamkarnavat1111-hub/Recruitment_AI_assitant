@@ -227,8 +227,18 @@ async def process_resumes(task_id: str, resume_files: List[UploadFile], thread_i
                 fit_score = int(analysis_result['fit_score'])
                 resume_analysis_summary = analysis_result['resume_analysis_summary']
 
-                hire = 1 if fit_score > 7 else 0
 
+                if fit_score > 7:
+                    hire = 1
+                    extracted_resume_data.update({
+                        "shorlisted" : 1
+                    })
+                else:
+                    hire = 0
+                    extracted_resume_data.update({
+                        "shorlisted" : 1
+                    })
+                    
                 hire_probability = AI.predict_hiring_decision(
                     resume_text=parsed_resume_text,
                     job_description=job_description_data

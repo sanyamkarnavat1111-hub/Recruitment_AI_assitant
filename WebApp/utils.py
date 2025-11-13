@@ -191,7 +191,9 @@ def get_fittest_candidates(thread_id: str) -> str:
 
         all_evaluated_tid = []
         for idx, row in enumerate(non_evaluated_candidates, start=1):
-            tid,name, email, exp, score, analysis = row
+            tid,name, email, exp, score, analysis , shorlisted = row
+
+            shorlisted = int(shorlisted)
 
             # Clean and format
             exp_str = f"{exp} year{'s' if exp != 1 else ''}" if exp else "N/A"
@@ -202,6 +204,7 @@ def get_fittest_candidates(thread_id: str) -> str:
                 f"   Experience: {exp_str}",
                 f"   Fit Score: {score:.1f}",
                 f"   Analysis: {analysis.strip() if analysis else 'No analysis'}"
+                f"   Shorlisted: {"Candidate is selected." if shorlisted else 'Candidate is rejected'}"
             ]
             result.extend(candidate_block)
             result.append("")  # blank line between candidates
@@ -220,9 +223,9 @@ def get_fittest_candidates(thread_id: str) -> str:
             '''
             You are an expert HR analyst. Below is a list of detailed of all candidates details who applied for a job.
             The fit score is assigned to the candidate to denote how fit they are for the job role assigned.
-            Ideally you should select only candidates whose fit score is greater than 7 for analysis , but if there
-            aren't any then respone with approriate details of candidate which has some potential based on the analysis details that
-            you have , but if none of the candidate are not good enough then simply reply with apporiate response.
+            Ideally only those candidates are shortliested whose fit score is greater than 7 for analysis , but if there
+            aren't any shortlisted candidates then respond with approriate details of candidate which has some potential based on the analysis details that
+            you have , but if none of the candidate are good enough then simply reply with apporiate response that no candidates are fit for the given job desription.
 
 
             **Candidate Data:**
@@ -231,10 +234,8 @@ def get_fittest_candidates(thread_id: str) -> str:
             ---
 
             Write a **concise 3–4 sentence summary** of only candidates that were selected by you highlighting:Name of candidates , email address ,fit score , Key strengths (e.g., experience, skills)
-            If not potential candidates are found then simply respond that no candidates are fit for the given job desription
-            
-            
-            Follow-Up :- After the anaysis provide one liner follow up question which user can ask you in return , based on the data that you have 
+
+            Follow-Up :- Provide one liner follow up question which user can ask you in return , based on the data that you have 
 
             '''
         )
