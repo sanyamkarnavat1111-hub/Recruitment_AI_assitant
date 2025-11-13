@@ -4,14 +4,12 @@
 <head>
   <meta charset="UTF-8" />
   <meta name="viewport" content="width=device-width, initial-scale=1.0" />
-  <title>AI Assistant</title>
+  <title>Recruiter AI</title>
   <link rel="stylesheet" href="https://cdnjs.cloudflare.com/ajax/libs/font-awesome/6.4.0/css/all.min.css" />
-  <!-- Markdown renderer -->
   <script src="https://cdn.jsdelivr.net/npm/marked/marked.min.js"></script>
-  <!-- Optional but recommended: sanitize HTML -->
   <script src="https://cdn.jsdelivr.net/npm/dompurify@3.1.6/dist/purify.min.js"></script>
   <style>
-    /* ==== Base ==== */
+    /* ==== Reset & Base ==== */
     * {
       margin: 0;
       padding: 0;
@@ -19,76 +17,70 @@
     }
 
     body {
-      font-family: 'Segoe UI', sans-serif;
-      background: #f8f9fa;
-      color: #333;
-      line-height: 1.6;
+      font-family: 'Inter', 'Segoe UI', sans-serif;
+      background: #f9fafb;
+      color: #1f2937;
+      line-height: 1.5;
     }
 
     .container {
       max-width: 900px;
       margin: 0 auto;
-      padding: 20px;
-      height: 100vh;
+      padding: 16px;
       display: flex;
       flex-direction: column;
+      height: 100vh;
     }
 
-    /* ==== Header ==== */
+    /* ==== Compact Header ==== */
     .header {
-      margin-bottom: 30px;
+      text-align: center;
+      padding: 16px 0;
+      border-bottom: 1px solid #e5e7eb;
+      background: #fff;
+      border-radius: 12px 12px 0 0;
+      margin-bottom: 16px;
+      box-shadow: 0 1px 3px rgba(0, 0, 0, .05);
     }
 
     .greeting {
-      font-size: 2.8rem;
+      font-size: 1.8rem;
       font-weight: 700;
-      background: linear-gradient(90deg, #4f46e5, #7c3aed);
-      -webkit-background-clip: text;
-      -webkit-text-fill-color: transparent;
-      background-clip: text;
+      color: #6d28d9;
+      margin-bottom: 4px;
     }
 
     .subtext {
-      font-size: 1.1rem;
-      color: #555;
-      margin-bottom: 8px;
-    }
-
-    .highlight {
-      color: #7c3aed;
-      font-weight: 600;
-      cursor: pointer;
+      font-size: 0.95rem;
+      color: #6b7280;
     }
 
     /* ==== Upload Section ==== */
     .upload-section {
+      background: #fff;
+      border-radius: 12px;
+      padding: 20px;
+      margin-bottom: 16px;
+      box-shadow: 0 1px 3px rgba(0, 0, 0, .08);
       display: flex;
       flex-direction: column;
       gap: 16px;
-      margin-bottom: 24px;
-      padding: 16px;
-      background: #fff;
-      border-radius: 12px;
-      box-shadow: 0 2px 8px rgba(0, 0, 0, .05);
-      opacity: 0;
-      transform: translateY(20px);
-      animation: fadeSlideUp .6s ease forwards;
     }
 
     .upload-group {
       display: flex;
       flex-direction: column;
-      gap: 8px;
+      gap: 6px;
     }
 
     .upload-label {
+      font-size: 0.9rem;
       font-weight: 600;
-      color: #444;
+      color: #374151;
     }
 
     .file-upload-wrapper {
       position: relative;
-      width: 100%;
     }
 
     .file-upload {
@@ -103,95 +95,101 @@
       display: flex;
       align-items: center;
       justify-content: center;
-      gap: 10px;
-      padding: 12px 20px;
-      background: #f1f5f9;
-      border: 2px dashed #94a3b8;
+      gap: 8px;
+      padding: 10px 16px;
+      background: #f3f4f6;
+      border: 2px dashed #9ca3af;
       border-radius: 10px;
-      color: #64748b;
+      color: #4b5563;
+      font-size: 0.9rem;
       font-weight: 500;
       cursor: pointer;
-      transition: background .25s, border .25s, transform .2s;
+      transition: all .2s;
     }
 
     .file-upload-btn:hover {
-      background: #e2e8f0;
-      border-color: #7c3aed;
-      transform: translateY(-2px);
+      background: #e5e7eb;
+      border-color: #6d28d9;
     }
 
-    .file-name {
-      margin-top: 6px;
-      font-size: .9rem;
+    .file-name,
+    .file-item span {
+      font-size: 0.85rem;
       color: #16a34a;
+      margin-top: 4px;
     }
 
     .file-list {
-      margin-top: 8px;
-      max-height: 120px;
+      margin-top: 6px;
+      max-height: 100px;
       overflow-y: auto;
-      padding-right: 8px;
+      font-size: 0.85rem;
     }
 
     .file-item {
       display: flex;
       align-items: center;
       gap: 8px;
-      font-size: .9rem;
+      padding: 4px 0;
       color: #16a34a;
-      margin-bottom: 4px;
     }
 
     .file-item i {
       color: #dc2626;
       cursor: pointer;
-      font-size: .8rem;
+      font-size: 0.8rem;
     }
 
     .upload-action {
-      margin-top: 12px;
       display: flex;
       justify-content: flex-end;
+      margin-top: 8px;
     }
 
     .upload-action button {
       padding: 10px 20px;
-      background: #7c3aed;
+      background: #6d28d9;
       color: #fff;
       border: none;
       border-radius: 8px;
       font-weight: 600;
+      font-size: 0.9rem;
       cursor: pointer;
       display: flex;
       align-items: center;
-      gap: 8px;
-      transition: background .25s, transform .2s;
+      gap: 6px;
+      transition: all .2s;
     }
 
     .upload-action button:hover {
-      background: #6d28d9;
-      transform: scale(1.03);
+      background: #5b21b6;
     }
 
     .upload-action button:disabled {
-      background: #94a3b8;
+      background: #9ca3af;
       cursor: not-allowed;
-      transform: none;
     }
 
-    /* ==== Chat Section ==== */
+    /* ==== Persistent Resume Upload ==== */
+    .resume-persistent {
+      display: none;
+      background: #fff;
+      border-radius: 12px;
+      padding: 16px;
+      margin-bottom: 16px;
+      box-shadow: 0 1px 3px rgba(0, 0, 0, .08);
+    }
+
+    /* ==== Chat Container ==== */
     .chat-container {
       flex: 1;
       display: flex;
       flex-direction: column;
       background: #fff;
       border-radius: 12px;
-      box-shadow: 0 4px 12px rgba(0, 0, 0, .08);
       overflow: hidden;
+      box-shadow: 0 1px 3px rgba(0, 0, 0, .08);
       margin-bottom: 16px;
-      opacity: 0;
-      transform: translateY(20px);
-      animation: fadeSlideUp .6s ease forwards .2s;
     }
 
     .chat-messages {
@@ -200,263 +198,252 @@
       overflow-y: auto;
       display: flex;
       flex-direction: column;
-      gap: 16px;
+      gap: 12px;
+      background: #f9fafb;
     }
 
     .message {
-      max-width: 80%;
-      padding: 12px 16px;
-      border-radius: 18px;
-      font-size: 1rem;
-      line-height: 1.65;
-      opacity: 0;
-      transform: translateY(10px);
-      animation: msgFadeIn .4s ease forwards;
+      max-width: 78%;
+      padding: 10px 14px;
+      border-radius: 16px;
+      font-size: 0.95rem;
+      line-height: 1.5;
+      word-wrap: break-word;
     }
 
     .user-message {
       align-self: flex-end;
-      background: #4f46e5;
+      background: #6d28d9;
       color: #fff;
       border-bottom-right-radius: 4px;
     }
 
     .ai-message {
       align-self: flex-start;
-      background: #f1f5f9;
-      color: #1e293b;
+      background: #f3f4f6;
+      color: #1f2937;
       border-bottom-left-radius: 4px;
     }
 
+    /* ==== Input Area with Paperclip ==== */
     .input-area {
       display: flex;
-      padding: 16px;
-      background: #f8fafc;
-      border-top: 1px solid #e2e8f0;
-      gap: 12px;
+      align-items: center;
+      padding: 12px 16px;
+      background: #fff;
+      border-top: 1px solid #e5e7eb;
+      gap: 10px;
     }
 
-    .text-input {
-      flex: 1;
-      padding: 14px 18px;
-      font-size: 1rem;
-      border: 1px solid #cbd5e1;
-      border-radius: 50px;
-      outline: none;
-      transition: border .2s, box-shadow .2s;
-    }
-
-    .text-input:focus {
-      border-color: #7c3aed;
-      box-shadow: 0 0 0 3px rgba(124, 58, 237, .1);
-    }
-
-    .send-btn {
-      width: 48px;
-      height: 48px;
-      background: #7c3aed;
-      color: #fff;
+    .attach-btn {
+      width: 40px;
+      height: 40px;
+      background: #f3f4f6;
+      color: #6b7280;
       border: none;
       border-radius: 50%;
-      font-size: 1.2rem;
+      font-size: 1rem;
       cursor: pointer;
       display: flex;
       align-items: center;
       justify-content: center;
-      transition: all .25s;
+      transition: all .2s;
+    }
+
+    .attach-btn:hover {
+      background: #e5e7eb;
+      color: #4b5563;
+    }
+
+    .attach-btn input {
+      display: none;
+    }
+
+    .text-input {
+      flex: 1;
+      padding: 10px 16px;
+      font-size: 0.95rem;
+      border: 1px solid #d1d5db;
+      border-radius: 50px;
+      outline: none;
+      transition: all .2s;
+    }
+
+    .text-input:focus {
+      border-color: #6d28d9;
+      box-shadow: 0 0 0 3px rgba(109, 40, 217, .1);
+    }
+
+    .send-btn {
+      width: 40px;
+      height: 40px;
+      background: #6d28d9;
+      color: #fff;
+      border: none;
+      border-radius: 50%;
+      font-size: 1.1rem;
+      cursor: pointer;
+      display: flex;
+      align-items: center;
+      justify-content: center;
+      transition: all .2s;
     }
 
     .send-btn:hover {
-      background: #6d28d9;
-      transform: scale(1.08);
+      background: #5b21b6;
     }
 
     .send-btn:disabled {
-      background: #94a3b8;
+      background: #9ca3af;
       cursor: not-allowed;
-      transform: none;
+    }
+
+    /* ==== Clean File Pills in Chat Input ==== */
+    .chat-file-preview {
+      padding: 0 16px 8px;
+      display: flex;
+      flex-wrap: wrap;
+      gap: 6px;
+      font-size: 0.8rem;
+    }
+
+    .chat-file-pill {
+      background: #e0e7ff;
+      color: #4f46e5;
+      padding: 4px 10px;
+      border-radius: 16px;
+      display: flex;
+      align-items: center;
+      gap: 6px;
+      font-weight: 500;
+    }
+
+    .chat-file-pill i {
+      cursor: pointer;
+      color: #7c3aed;
+      font-size: 0.75rem;
     }
 
     .hidden {
       display: none !important;
     }
 
-    /* ==== Animations ==== */
-    @keyframes fadeSlideUp {
-      to {
-        opacity: 1;
-        transform: translateY(0);
-      }
-    }
-
-    @keyframes msgFadeIn {
-      to {
-        opacity: 1;
-        transform: translateY(0);
-      }
-    }
-
-    /* ==== Markdown inside AI bubbles ==== */
-    .ai-message {
-      line-height: 1.65;
-    }
-
-    .ai-message h1,
-    .ai-message h2,
-    .ai-message h3,
-    .ai-message h4 {
-      margin: .8em 0 .4em;
-      font-weight: 600;
-      color: #1e293b;
-    }
-
-    .ai-message h1 {
-      font-size: 1.35rem;
-    }
-
-    .ai-message h2 {
-      font-size: 1.2rem;
-    }
-
-    .ai-message h3 {
-      font-size: 1.1rem;
-    }
-
-    .ai-message ul,
-    .ai-message ol {
-      margin: .6em 0;
-      padding-left: 1.4em;
-    }
-
-    .ai-message li {
-      margin: .25em 0;
-    }
-
-    .ai-message code {
-      background: rgba(0, 0, 0, .07);
-      padding: .15em .35em;
-      border-radius: 4px;
-      font-size: .9em;
-    }
-
+    /* ==== Markdown & Code ==== */
     .ai-message pre {
-      background: #1e293b;
-      color: #e2e8f0;
+      background: #1f2937;
+      color: #e5e7eb;
       padding: 12px;
       border-radius: 8px;
       overflow-x: auto;
-      margin: .8em 0;
-      font-size: .9rem;
+      font-size: 0.85rem;
+      margin: 8px 0;
     }
 
-    .ai-message blockquote {
-      border-left: 4px solid #7c3aed;
-      margin: .8em 0;
-      padding-left: 1em;
-      color: #555;
-      font-style: italic;
-    }
-
-    /* ==== Force analysis text to look like normal AI text (no code block) ==== */
     .analysis-plain {
-      background: transparent !important;
-      color: inherit !important;
-      padding: 0 !important;
-      margin: 0.6em 0 !important;
-      font-family: inherit;
-      font-size: inherit;
+      background: transparent;
+      padding: 0;
+      margin: 8px 0;
       white-space: pre-wrap;
-      word-wrap: break-word;
     }
 
-    /* ==== Responsiveness ==== */
-    @media (max-width:768px) {
-      .greeting {
-        font-size: 2.3rem;
-      }
-
-      .upload-section {
-        flex-direction: column;
-      }
+    /* ==== Scrollbars ==== */
+    .chat-messages::-webkit-scrollbar,
+    .file-list::-webkit-scrollbar {
+      width: 5px;
     }
 
-    @media (max-width:480px) {
-      .greeting {
-        font-size: 2rem;
-      }
-    }
-
-    .chat-messages::-webkit-scrollbar {
-      width: 6px;
-    }
-
-    .chat-messages::-webkit-scrollbar-track {
+    .chat-messages::-webkit-scrollbar-track,
+    .file-list::-webkit-scrollbar-track {
       background: transparent;
     }
 
-    .chat-messages::-webkit-scrollbar-thumb {
-      background: #cbd5e1;
+    .chat-messages::-webkit-scrollbar-thumb,
+    .file-list::-webkit-scrollbar-thumb {
+      background: #d1d5db;
       border-radius: 3px;
     }
 
-    .file-list::-webkit-scrollbar {
-      width: 4px;
-    }
+    /* ==== Responsive ==== */
+    @media (max-width:640px) {
+      .container {
+        padding: 12px;
+      }
 
-    .file-list::-webkit-scrollbar-thumb {
-      background: #cbd5e1;
-      border-radius: 2px;
+      .greeting {
+        font-size: 1.6rem;
+      }
+
+      .upload-section,
+      .resume-persistent {
+        padding: 16px;
+      }
     }
   </style>
 </head>
 
 <body>
   <div class="container">
-    <!-- Header -->
+    <!-- Compact Header -->
     <div class="header">
-      <h1 class="greeting">Hello,</h1>
-      <h2 style="font-size:2rem;font-weight:700;margin-bottom:12px;">How can I help you today?</h2>
-      <p class="subtext">
-        I'm an Recruiter AI assistant.<br />
-        Ask me anything about the <span class="highlight">Uploaded Resume</span>
-      </p>
+      <h1 class="greeting">Recruiter AI</h1>
+      <p class="subtext">Ask anything about resumes or upload documents</p>
     </div>
 
-    <!-- Upload Section -->
+    <!-- UPLOAD SECTION -->
     <section class="upload-section" id="upload-section">
-      <div class="upload-group">
-        <label class="upload-label">Upload Job Description</label>
+      <div class="upload-group" id="jd-group">
+        <label class="upload-label">Job Description</label>
         <div class="file-upload-wrapper">
           <input type="file" id="jd-file" class="file-upload" accept=".pdf,.doc,.docx,.txt" />
-          <div class="file-upload-btn"><i class="fas fa-cloud-upload-alt"></i> Choose File</div>
+          <div class="file-upload-btn">Choose File</div>
         </div>
         <div id="jd-name" class="file-name" style="display:none;"></div>
       </div>
 
-      <!-- Modified Resume Upload: Multiple Files -->
-      <div class="upload-group">
-        <label class="upload-label">Upload Resumes</label>
+      <div class="upload-group" id="resume-group">
+        <label class="upload-label">Resumes</label>
         <div class="file-upload-wrapper">
           <input type="file" id="resume-file" class="file-upload" accept=".pdf,.doc,.docx,.txt" multiple />
-          <div class="file-upload-btn"><i class="fas fa-cloud-upload-alt"></i> Choose Files</div>
+          <div class="file-upload-btn">Choose Files</div>
         </div>
         <div id="resume-list" class="file-list" style="display:none;"></div>
       </div>
 
       <div class="upload-action">
-        <button id="upload-btn">
-          <i class="fas fa-upload"></i> Upload & Analyze
-        </button>
+        <button id="upload-btn">Upload &amp; Analyze</button>
       </div>
     </section>
 
-    <!-- Chat (hidden initially) -->
+    <!-- PERSISTENT RESUME UPLOAD -->
+    <section class="resume-persistent" id="resume-persistent" style="display:none;">
+      <div class="upload-group">
+        <label class="upload-label">Add More Resumes</label>
+        <div class="file-upload-wrapper">
+          <input type="file" id="resume-file-persist" class="file-upload" accept=".pdf,.doc,.docx,.txt" multiple />
+          <div class="file-upload-btn">Choose Files</div>
+        </div>
+        <div id="resume-list-persist" class="file-list" style="display:none;"></div>
+      </div>
+      <div class="upload-action">
+        <button id="upload-resume-btn">Upload More</button>
+      </div>
+    </section>
+
+    <!-- CHAT -->
     <section class="chat-container hidden" id="chat-section">
       <div class="chat-messages" id="chat-messages"></div>
+
+      <!-- Input with Paperclip + Clean File Pills -->
       <div class="input-area">
-        <input type="text" class="text-input" id="user-input" placeholder="How do I get started?" />
+        <label class="attach-btn">
+          <i class="fas fa-paperclip"></i>
+          <input type="file" id="chat-file-input" multiple accept=".pdf,.doc,.docx,.txt,.csv,.json,.xlsx,.pptx" />
+        </label>
+        <input type="text" class="text-input" id="user-input" placeholder="Ask or upload files..." />
         <button class="send-btn" id="send-btn"><i class="fas fa-paper-plane"></i></button>
       </div>
+
+      <div id="chat-file-preview" class="chat-file-preview" style="display:none;"></div>
     </section>
   </div>
 
@@ -465,179 +452,249 @@
 
     // DOM
     const uploadSection = document.getElementById('upload-section');
+    const resumePersistent = document.getElementById('resume-persistent');
     const chatSection = document.getElementById('chat-section');
+
+    const jdGroup = document.getElementById('jd-group');
     const jdInput = document.getElementById('jd-file');
-    const resumeInput = document.getElementById('resume-file');
     const jdName = document.getElementById('jd-name');
+
+    const resumeInput = document.getElementById('resume-file');
     const resumeList = document.getElementById('resume-list');
+    const resumeInputPersist = document.getElementById('resume-file-persist');
+    const resumeListPersist = document.getElementById('resume-list-persist');
+
     const uploadBtn = document.getElementById('upload-btn');
+    const uploadResumeBtn = document.getElementById('upload-resume-btn');
+
     const userInput = document.getElementById('user-input');
     const sendBtn = document.getElementById('send-btn');
     const chatMessages = document.getElementById('chat-messages');
+    const chatFileInput = document.getElementById('chat-file-input');
+    const chatFilePreview = document.getElementById('chat-file-preview');
 
     let jdFile = null;
-    let resumeFiles = []; // Now an array
+    let resumeFiles = [];
+    let jdUploaded = false;
+    let chatStarted = false;
+    let chatFiles = [];
 
-    // ----- JD file handling (unchanged) -----
+    /* ====================== JD & Resume ====================== */
     jdInput.addEventListener('change', e => {
-      jdFile = e.target.files[0];
-      if (jdFile) {
-        jdName.textContent = jdFile.name;
-        jdName.style.display = 'block';
-      } else {
-        jdName.style.display = 'none';
-      }
-      toggleUploadButton();
+      jdFile = e.target.files[0] || null;
+      jdName.textContent = jdFile?.name ?? '';
+      jdName.style.display = jdFile ? 'block' : 'none';
+      toggleButtons();
     });
 
-    // ----- Resume files handling (updated for multiple) -----
-    resumeInput.addEventListener('change', e => {
-      const newFiles = Array.from(e.target.files);
-      resumeFiles = [...resumeFiles, ...newFiles];
-      renderResumeList();
-      toggleUploadButton();
+    function setupResumeInput(input, list) {
+      input.addEventListener('change', e => {
+        resumeFiles = [...resumeFiles, ...Array.from(e.target.files)];
+        renderResumeList(list);
+        toggleButtons();
+      });
+    }
+
+    function renderResumeList(listEl) {
+      if (!resumeFiles.length) { listEl.style.display = 'none'; return; }
+      listEl.innerHTML = '';
+      resumeFiles.forEach((f, i) => {
+        const div = document.createElement('div');
+        div.className = 'file-item';
+        div.innerHTML = `<span>${f.name}</span><i class="fas fa-times" data-index="${i}"></i>`;
+        listEl.appendChild(div);
+      });
+      listEl.querySelectorAll('.fa-times').forEach(ic => {
+        ic.addEventListener('click', () => {
+          resumeFiles.splice(+ic.dataset.index, 1);
+          renderResumeList(listEl);
+          toggleButtons();
+        });
+      });
+      listEl.style.display = 'block';
+    }
+
+    setupResumeInput(resumeInput, resumeList);
+    setupResumeInput(resumeInputPersist, resumeListPersist);
+
+    function clearResumeUI() {
+      resumeFiles = [];
+      renderResumeList(resumeList);
+      renderResumeList(resumeListPersist);
+    }
+
+    function toggleButtons() {
+      const hasResumes = resumeFiles.length > 0;
+      const canUploadJD = !jdUploaded && jdFile;
+      uploadBtn.disabled = !(canUploadJD || (jdUploaded && hasResumes));
+      uploadResumeBtn.disabled = !hasResumes;
+    }
+
+    /* ====================== Chat File Upload (Paperclip) ====================== */
+    chatFileInput.addEventListener('change', e => {
+      chatFiles = [...chatFiles, ...Array.from(e.target.files)];
+      renderChatFilePills();
     });
 
-    function renderResumeList() {
-      if (resumeFiles.length === 0) {
-        resumeList.style.display = 'none';
+    function renderChatFilePills() {
+      if (!chatFiles.length) {
+        chatFilePreview.style.display = 'none';
         return;
       }
-
-      resumeList.innerHTML = '';
-      resumeFiles.forEach((file, index) => {
-        const item = document.createElement('div');
-        item.className = 'file-item';
-        item.innerHTML = `
-          <span>${file.name}</span>
-          <i class="fas fa-times" data-index="${index}"></i>
-        `;
-        resumeList.appendChild(item);
+      chatFilePreview.innerHTML = '';
+      chatFiles.forEach((f, i) => {
+        const pill = document.createElement('div');
+        pill.className = 'chat-file-pill';
+        pill.innerHTML = `${f.name}<i class="fas fa-times" data-index="${i}"></i>`;
+        chatFilePreview.appendChild(pill);
       });
-
-      // Remove file on click
-      resumeList.querySelectorAll('.fa-times').forEach(icon => {
-        icon.addEventListener('click', () => {
-          const idx = parseInt(icon.dataset.index);
-          resumeFiles.splice(idx, 1);
-          renderResumeList();
-          toggleUploadButton();
+      chatFilePreview.querySelectorAll('.fa-times').forEach(ic => {
+        ic.addEventListener('click', () => {
+          chatFiles.splice(+ic.dataset.index, 1);
+          renderChatFilePills();
         });
       });
-
-      resumeList.style.display = 'block';
+      chatFilePreview.style.display = 'flex';
     }
 
-    function toggleUploadButton() {
-      uploadBtn.disabled = !(jdFile && resumeFiles.length > 0);
-    }
-
-    // ----- Upload -----
-    uploadBtn.addEventListener('click', async () => {
-      if (!jdFile || resumeFiles.length === 0) return;
-
+    async function uploadChatFiles() {
+      if (!chatFiles.length) return null;
       const form = new FormData();
-
-      // Add job description file
-      form.append('job_description_file', jdFile);
-
-      // Add multiple resume files with the SAME field name (no backticks, no index)
-      resumeFiles.forEach(file => {
-        form.append('resume_files', file);  // ✅ Same field name for all files
-      });
-
-      // Add thread_id
       form.append('thread_id', threadId);
+      chatFiles.forEach(f => form.append('files', f));
+      const res = await fetch(`${window.location.origin}/upload_files`, { method: 'POST', body: form });
+      if (!res.ok) throw new Error(`Upload failed: ${await res.text()}`);
+      return res.json();
+    }
 
+    /* ====================== Upload JD & Resumes ====================== */
+    async function uploadJD() {
+      const form = new FormData();
+      form.append('thread_id', threadId);
+      form.append('job_description_file', jdFile);
+      const res = await fetch(`${window.location.origin}/upload_job_description`, { method: 'POST', body: form });
+      if (!res.ok) throw new Error(`JD upload failed`);
+      return res.json();
+    }
+
+    async function uploadResumes() {
+      const form = new FormData();
+      form.append('thread_id', threadId);
+      resumeFiles.forEach(f => form.append('resume_files', f));
+      const res = await fetch(`${window.location.origin}/upload_resume`, { method: 'POST', body: form });
+      if (!res.ok) throw new Error(`Resume upload failed`);
+      return res.json();
+    }
+
+    uploadBtn.addEventListener('click', async () => {
+      if (uploadBtn.disabled) return;
       uploadBtn.disabled = true;
-      uploadBtn.innerHTML = '<i class="fas fa-spinner fa-spin"></i> Uploading...';
+      uploadBtn.innerHTML = 'Uploading…';
 
       try {
-        const BASE_URL = window.location.origin + '/upload';
-        const res = await fetch(BASE_URL, {
-          method: 'POST',
-          body: form
-          // ❌ Do NOT add headers - let browser set Content-Type automatically
-        });
-
-        const data = await res.json();
-
-        if (res.ok && data.success) {  // Changed to check data.success
-          uploadSection.classList.add('hidden');
-          chatSection.classList.remove('hidden');
-
-          // Show upload summary
-          const summary = `✅ Successfully processed ${data.processed_count} out of ${data.resume_count} resume(s)!`;
-          addMessage('ai', summary);
-
-          // Show any failures
-          if (data.failed_count > 0) {
-            const failMsg = `⚠️ ${data.failed_count} resume(s) failed to process.`;
-            addMessage('ai', failMsg);
-          }
-          // 3. Fittest-candidate LLM summary  
-          if (data.fittest_candidates) {
-            addMessage('ai', data.fittest_candidates);
-          }
-        } else {
-          alert(`Upload failed: ${data.error || 'Please try again.'}`);
+        if (!jdUploaded) {
+          await uploadJD();
+          jdUploaded = true;
+          jdGroup.style.display = 'none';
+          jdName.style.display = 'none';
+          jdInput.value = '';
+          jdFile = null;
         }
-      } catch (err) {
-        console.error('Upload error:', err);
-        alert('Network error. Please check your connection.');
-      } finally {
+        const data = await uploadResumes();
+        clearResumeUI();
+
+        if (!chatStarted) {
+          uploadSection.classList.add('hidden');
+          resumePersistent.style.display = 'block';
+          chatSection.classList.remove('hidden');
+          chatStarted = true;
+        }
+
+        addMessage('ai', `Processed ${data.processed_count} resume(s).`);
+        if (data.fittest_candidates) addMessage('ai', data.fittest_candidates);
+      } catch (err) { alert(err.message); }
+      finally {
         uploadBtn.disabled = false;
-        uploadBtn.innerHTML = '<i class="fas fa-upload"></i> Upload & Analyze';
+        uploadBtn.innerHTML = 'Upload &amp; Analyze';
+        toggleButtons();
       }
     });
 
-    // ----- Send query -----
+    uploadResumeBtn.addEventListener('click', async () => {
+      if (uploadResumeBtn.disabled) return;
+      uploadResumeBtn.disabled = true;
+      uploadResumeBtn.innerHTML = 'Uploading…';
+      try {
+        const data = await uploadResumes();
+        clearResumeUI();
+        addMessage('ai', `+${data.processed_count} resume(s) added.`);
+        if (data.fittest_candidates) {
+          addMessage('ai', data.fittest_candidates);  // Now shown on every upload
+        }
+      } catch (err) { alert(err.message); }
+      finally {
+        uploadResumeBtn.disabled = false;
+        uploadResumeBtn.innerHTML = 'Upload More';
+        toggleButtons();
+      }
+    });
+
+    /* ====================== Send Message ====================== */
     async function sendMessage() {
       const text = userInput.value.trim();
-      if (!text) return;
+      if (!text && !chatFiles.length) return;
 
-      addMessage('user', text);
+      if (text) addMessage('user', text);
       userInput.value = '';
 
-      const form = new FormData();
-      form.append('thread_id', threadId);
-      form.append('query', text);
+      let fileRes = null;
+      if (chatFiles.length) {
+        try {
+          fileRes = await uploadChatFiles();
+          addMessage('ai', `Uploaded ${chatFiles.length} file(s) to knowledge base.`);
+        } catch (err) {
+          addMessage('ai', `File upload failed.`);
+        }
+        chatFiles = [];
+        renderChatFilePills();
+      }
 
-      try {
-        const BASE_URL = window.location.origin + '/query';
-        const res = await fetch(BASE_URL, { method: 'POST', body: form });
-        const data = await res.json();
-        addMessage('ai', data.response || 'No response from server.');
-      } catch (err) {
-        addMessage('ai', 'Error: Could not reach server.');
+      if (text) {
+        const form = new FormData();
+        form.append('thread_id', threadId);
+        form.append('query', text);
+        if (fileRes) form.append('uploaded_files', JSON.stringify(fileRes));
+        try {
+          const res = await fetch(`${window.location.origin}/query`, { method: 'POST', body: form });
+          const data = await res.json();
+          addMessage('ai', data.response || 'No response.');
+        } catch (e) {
+          addMessage('ai', 'Error: Server unreachable.');
+        }
       }
     }
 
     sendBtn.addEventListener('click', sendMessage);
-    userInput.addEventListener('keypress', e => { if (e.key === 'Enter') sendMessage(); });
+    userInput.addEventListener('keypress', e => e.key === 'Enter' && sendMessage());
 
-    // ----- Message helper: Render Markdown, strip code block from analysis -----
     function addMessage(sender, text) {
       const div = document.createElement('div');
       div.className = `message ${sender}-message`;
-
       if (sender === 'ai') {
-        let html = marked.parse(text.trim());
-
-        // Remove <pre><code> wrapper if this is the analysis (contains "analysis")
-        if (text.toLowerCase().includes('analysis') && html.includes('<pre><code')) {
+        let html = marked.parse(text);
+        if (text.includes('analysis') && html.includes('<pre><code')) {
           html = html.replace(/<pre><code[^>]*>([\s\S]*?)<\/code><\/pre>/gi,
-            (match, code) => `<div class="analysis-plain">${code.replace(/\n/g, '<br>')}</div>`);
+            (m, c) => `<div class="analysis-plain">${c.replace(/\n/g, '<br>')}</div>`);
         }
-
         div.innerHTML = DOMPurify.sanitize(html);
       } else {
         div.textContent = text;
       }
-
       chatMessages.appendChild(div);
       chatMessages.scrollTop = chatMessages.scrollHeight;
     }
+
+    toggleButtons();
   </script>
 </body>
 

@@ -1,6 +1,6 @@
 # schemas.py
 from pydantic import BaseModel, Field 
-from typing import Optional , Literal , TypedDict , Annotated
+from typing import Optional , TypedDict , Annotated
 from langchain_core.messages import AnyMessage
 from langgraph.graph.message import add_messages
 
@@ -24,4 +24,4 @@ class ExtractResumeDataSchema(BaseModel):
 
 class ResumeAnalysis(BaseModel):
     fit_score : int = Field(... , description="A fit score of the candidate.")
-    analysis_summary : str = Field(... , description="A short and concise summary of analysis")
+    resume_analysis_summary : str = Field(... , description="A short and concise summary of analysis")

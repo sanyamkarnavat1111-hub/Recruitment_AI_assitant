@@ -10,7 +10,7 @@ from langchain_core.prompts import ChatPromptTemplate
 from langchain_core.output_parsers import StrOutputParser
 from LLM_models import llm_resume_data_extractor , llm_resume_analysis , chat_llm
 from tenacity import retry , stop_after_attempt , wait_fixed
-from database_sqlite import get_db_connection
+from database_sqlite import get_non_evluated_candidates , update_evaluated_candidates
 
 
 def parse_file(file_path: str) -> str:
@@ -48,7 +48,7 @@ def parse_file(file_path: str) -> str:
         print(f"Error loading {file_path}: {e}")
         return ""
     
-@retry(stop=stop_after_attempt(3), wait=wait_fixed(2))
+@retry(stop=stop_after_attempt(5), wait=wait_fixed(5))
 def extract_data_from_resume(resume_data: str) -> dict:
     
     # Define the extraction prompt
@@ -94,7 +94,7 @@ def extract_data_from_resume(resume_data: str) -> dict:
             "projects": result.projects
         }
     
-
+@retry(stop=stop_after_attempt(5), wait=wait_fixed(5))
 def analyze_resume(extracted_resume_data: dict, job_description: str):
     # Extract data from the resume dictionary
     
@@ -154,36 +154,27 @@ def analyze_resume(extracted_resume_data: dict, job_description: str):
     # Return the analysis results
     return {
         "fit_score": analysis_result.fit_score,
-        "analysis_summary": analysis_result.analysis_summary
+        "resume_analysis_summary": analysis_result.resume_analysis_summary
     }
 
-
+@retry(stop=stop_after_attempt(5), wait=wait_fixed(2))
 def get_fittest_candidates(thread_id: str) -> str:
     """
-    Fetch candidates with fit_score > 7 and return a formatted string (row-wise).
+    Return a formatted string of analyzed and shortlisted candidates by AI .
     """
     try:
-        conn = get_db_connection()
-        cursor = conn.cursor()
+        non_evaluated_candidates = get_non_evluated_candidates(thread_id=thread_id)
 
-        query = """
-        SELECT candidate_name, email_address, total_experience, 
-               fit_score, analysis 
-        FROM users 
-        WHERE thread_id = ? AND fit_score >= 7
-        ORDER BY fit_score DESC
-        """
-        cursor.execute(query, (thread_id,))
-        rows = cursor.fetchall()
-
-        if not rows:
+        if not non_evaluated_candidates:
             
             # Not canidates found fit score greater than 7 
             prompt = ChatPromptTemplate.from_template(
                 '''
                 You are a shortlisting HR AI assisstant but you didn't found any candidate fit for given 
                 job description , generate a very short message saying that none of the candidates are fit 
-                for the given job description . Also provide one liner follow up question which user can ask you in return.
+                for the given job description . 
+                
+                Follow-Up :- Provide one liner follow up question which user can ask you in return.
                 '''
             )
 
@@ -197,8 +188,10 @@ def get_fittest_candidates(thread_id: str) -> str:
         result = ["FITTEST CANDIDATES"]
         result.append("═" * 60)
 
-        for idx, row in enumerate(rows, start=1):
-            name, email, exp, score, analysis = row
+
+        all_evaluated_tid = []
+        for idx, row in enumerate(non_evaluated_candidates, start=1):
+            tid,name, email, exp, score, analysis = row
 
             # Clean and format
             exp_str = f"{exp} year{'s' if exp != 1 else ''}" if exp else "N/A"
@@ -212,27 +205,36 @@ def get_fittest_candidates(thread_id: str) -> str:
             ]
             result.extend(candidate_block)
             result.append("")  # blank line between candidates
+            all_evaluated_tid.append(tid)
+        
 
         result.append("═" * 60)
-        result.append(f"Total: {len(rows)} candidate{'s' if len(rows) != 1 else ''} above threshold.")
+        result.append(f"Total: {len(non_evaluated_candidates)} candidate{'s' if len(non_evaluated_candidates) != 1 else ''} above threshold.")
         
-        formatted_shortlisted_data = "\n".join(result)
+        formatted_candidate_data = "\n".join(result)
 
         ###########   Langchain workflow   ############
 
 
         prompt = ChatPromptTemplate.from_template(
             '''
-            You are an expert HR analyst. Below is a list of **shortlisted candidates** for a job.
-            The fit score is assigned the candidate to denote how fit they are for the job role assigned
+            You are an expert HR analyst. Below is a list of detailed of all candidates details who applied for a job.
+            The fit score is assigned to the candidate to denote how fit they are for the job role assigned.
+            Ideally you should select only candidates whose fit score is greater than 7 for analysis , but if there
+            aren't any then respone with approriate details of candidate which has some potential based on the analysis details that
+            you have , but if none of the candidate are not good enough then simply reply with apporiate response.
+
 
             **Candidate Data:**
-            {shortlisted_data}
+            {candidate_data}
 
             ---
 
-            Write a **concise 3–4 sentence summary** highlighting:Name of candidates , their email address .Average fit score and AI hire probability , Key strengths (e.g., experience, skills)
-            At the end suggest and provide one liner follow-up questions the user can ask you as follow up .
+            Write a **concise 3–4 sentence summary** of only candidates that were selected by you highlighting:Name of candidates , email address ,fit score , Key strengths (e.g., experience, skills)
+            If not potential candidates are found then simply respond that no candidates are fit for the given job desription
+            
+            
+            Follow-Up :- After the anaysis provide one liner follow up question which user can ask you in return , based on the data that you have 
 
             '''
         )
@@ -240,9 +242,17 @@ def get_fittest_candidates(thread_id: str) -> str:
         chain = prompt | chat_llm | StrOutputParser()
 
         response = chain.invoke({
-            "shortlisted_data": formatted_shortlisted_data
+            "candidate_data": formatted_candidate_data
         }).strip()
 
+
+        # After the response is generated update the users table to mark
+        # candidates as evaluated.
+
+        update_evaluated_candidates(
+            thread_id=thread_id,
+            tid_list=all_evaluated_tid
+        )
         
         return response
 
@@ -250,7 +260,3 @@ def get_fittest_candidates(thread_id: str) -> str:
         error_msg = f"Error in get_fittest_candidates: {e}"
         print(error_msg)
         return error_msg
-
-    finally:
-        if conn:
-            conn.close()

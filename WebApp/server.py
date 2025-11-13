@@ -8,7 +8,7 @@ from langchain_core.messages import HumanMessage, AIMessage
 import logging
 import tempfile
 from utils import parse_file, extract_data_from_resume, analyze_resume , get_fittest_candidates
-from database_sqlite import insert_extracted_data, test_connection, drop_table, create_table
+from database_sqlite import test_connection, drop_table, create_table , insert_extracted_data , insert_job_description , get_job_description
 from typing import List
 from dotenv import load_dotenv
 from Screening_AI import ScreenAI
@@ -53,50 +53,32 @@ def homepage():
         )
 
 
-# ====================== Upload Endpoint (Initialize Thread State) ======================
-@app.post("/upload")
-async def upload_files(
-    resume_files: List[UploadFile] = File(..., description="Multiple resume files"),
+
+@app.post("/upload_job_description")
+async def upload_jd(
+    thread_id : str = Form(...),
     job_description_file: UploadFile = File(..., description="Single job description file"),
-    thread_id: str = Form(...),
 ):
-    
-    AI = ScreenAI()
-
-
-    if not thread_id or not thread_id.strip():
-        raise HTTPException(
-            status_code=status.HTTP_400_BAD_REQUEST,
-            detail="thread_id is required and cannot be empty."
-        )
-
-    if not resume_files or not any(f.filename for f in resume_files):
-        raise HTTPException(
-            status_code=status.HTTP_400_BAD_REQUEST,
-            detail="At least one resume file is required."
-        )
-
-    if not job_description_file.filename:
-        raise HTTPException(
-            status_code=status.HTTP_400_BAD_REQUEST,
-            detail="Job description file is required."
-        )
-
-    # ------------------------------------------------------------------
-    # 1. Initialise tracking variables
-    # ------------------------------------------------------------------
-    success = {"resumes": [], "job_description": False}
-    temp_jd_path: str | None = None
-    job_description_data: str | None = None
-    processed_count = 0
-    failed_analyses = []
-
-    logger.info(f"Upload started for thread: {thread_id}")
-
     try:
-        # ------------------------------------------------------------------
-        # 2. PROCESS JOB DESCRIPTION FIRST
-        # ------------------------------------------------------------------
+
+        temp_jd_path: str | None = None
+        job_description_data: str | None = None
+        
+        # Initial checks for thread and job description
+        if not thread_id or not thread_id.strip():
+            raise HTTPException(
+                status_code=status.HTTP_400_BAD_REQUEST,
+                detail="thread_id is required and cannot be empty."
+            )
+        
+
+        if not job_description_file.filename:
+            raise HTTPException(
+                status_code=status.HTTP_400_BAD_REQUEST,
+                detail="Job description file is required."
+            )
+
+        # Extract job description extension
         ext = job_description_file.filename.rsplit(".", 1)[-1].lower()
         if ext not in {"pdf", "txt", "docx"}:
             raise HTTPException(
@@ -116,7 +98,7 @@ async def upload_files(
         logger.info(f"[THREAD {thread_id}] JD temp file created: {temp_jd_path}")
 
         job_description_data = parse_file(temp_jd_path)
-        success["job_description"] = True
+        
         logger.info(f"[THREAD {thread_id}] JD parsed successfully (len={len(job_description_data)} chars)")
 
         # Cleanup JD temp file
@@ -125,8 +107,89 @@ async def upload_files(
             logger.info(f"[THREAD {thread_id}] Deleted JD temp file: {temp_jd_path}")
         temp_jd_path = None
 
+
+        # Insert the job description data into database
+        insert_job_description(
+            thread_id=thread_id,
+            job_description=job_description_data
+        )
+        
+        return JSONResponse({"success": True, "message": "Job description stored"})
+    
+    except HTTPException:
+        if temp_jd_path and os.path.exists(temp_jd_path):
+            try:
+                os.unlink(temp_jd_path)
+            except:
+                pass
+        raise
+    except Exception as e:
+        logger.critical(f"[THREAD {thread_id}] Unexpected error in /upload_job_description : {str(e)}")
+        if temp_jd_path and os.path.exists(temp_jd_path):
+            try:
+                os.unlink(temp_jd_path)
+            except:
+                pass
+
+    except Exception as e:
+        logger.error(f"[THREAD {thread_id}] Error uploading job description.. \n Error :- {str(e)}")
+
+
+# ====================== Upload Endpoint (Initialize Thread State) ======================
+@app.post("/upload_resume")
+async def upload_files(
+    resume_files: List[UploadFile] = File(..., description="Multiple resume files"),
+    
+    thread_id: str = Form(...),
+):
+    try:
+        
+
         # ------------------------------------------------------------------
-        # 3. PROCESS EACH RESUME
+        # Initializing the AI model for prediction
+        # ------------------------------------------------------------------
+        AI = ScreenAI()
+
+
+        # ------------------------------------------------------------------
+        # Check if JOB DESCRIPTION exists for given thread or not
+        # ------------------------------------------------------------------
+        job_description_data = get_job_description(thread_id=thread_id)
+
+        if not job_description_data:
+            raise HTTPException(
+                status_code= status.HTTP_400_BAD_REQUEST,
+                detail="Job description not found..."
+            )
+        
+        # ------------------------------------------------------------------
+        # Initial checks for thread_id and resume files
+        # -----------------------------------------------------------------
+        
+        if not thread_id or not thread_id.strip():
+            raise HTTPException(
+                status_code=status.HTTP_400_BAD_REQUEST,
+                detail="thread_id is required and cannot be empty."
+            )
+
+        if not resume_files or not any(f.filename for f in resume_files):
+            raise HTTPException(
+                status_code=status.HTTP_400_BAD_REQUEST,
+                detail="At least one resume file is required."
+            )
+        
+        # ------------------------------------------------------------------
+        # Initialise tracking variables
+        # ------------------------------------------------------------------
+        success = {"resumes": [], "job_description": False}
+        processed_count = 0
+        failed_analyses = []
+
+        logger.info(f"Upload started for thread: {thread_id}")
+
+    
+        # ------------------------------------------------------------------
+        # PROCESS EACH RESUME
         # ------------------------------------------------------------------
         
 
@@ -178,7 +241,7 @@ async def upload_files(
                 )
 
                 fit_score = int(analysis_result['fit_score'])
-                analysis_summary = analysis_result['analysis_summary']
+                resume_analysis_summary = analysis_result['resume_analysis_summary']
 
 
                 logger.info(f"[THREAD {thread_id}] Resume {idx} analysis completed")
@@ -211,9 +274,10 @@ async def upload_files(
 
                 extracted_resume_data.update({
                     "fit_score" : fit_score,
-                    "analysis_summary" : analysis_summary,
+                    "resume_analysis_summary" : resume_analysis_summary,
                     "thread_id" : thread_id,
-                    "ai_hire_probability" : hire_probability
+                    "ai_hire_probability" : hire_probability,
+                    "evaluated" : 0
                 })
 
 
@@ -293,20 +357,8 @@ async def upload_files(
             "fittest_candidates" : fittest_candidates
         })
 
-    except HTTPException:
-        if temp_jd_path and os.path.exists(temp_jd_path):
-            try:
-                os.unlink(temp_jd_path)
-            except:
-                pass
-        raise
-    except Exception as e:
-        logger.critical(f"Unexpected error in /upload for thread {thread_id}: {str(e)}")
-        if temp_jd_path and os.path.exists(temp_jd_path):
-            try:
-                os.unlink(temp_jd_path)
-            except:
-                pass
+    except Exception as e :
+
         return JSONResponse({
             "success": False,
             "uploaded": success,
