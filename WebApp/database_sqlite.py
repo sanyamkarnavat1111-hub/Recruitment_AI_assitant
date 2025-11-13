@@ -195,7 +195,7 @@ def get_non_evluated_candidates(thread_id : str ):
         query = """
             SELECT tid , candidate_name, email_address, total_experience, fit_score, resume_analysis_summary , shortlisted 
             FROM users 
-            WHERE thread_id = ? AND evaluated = 0
+            WHERE thread_id = ?
             ORDER BY fit_score DESC
             """
         cursor.execute(query, (thread_id,))
