@@ -13,7 +13,7 @@ from tenacity import retry , stop_after_attempt , wait_fixed
 from database_sqlite import get_non_evluated_candidates , update_evaluated_candidates
 
 
-def parse_file(file_path: str) -> str:
+def parse_file(file_path: str , parsing_for_vector=False) -> str:
     """
     Load PDF, DOCX, or TXT file and return plain text string.
     Uses robust LangChain loaders.
@@ -39,7 +39,13 @@ def parse_file(file_path: str) -> str:
         if not documents:
             print(f"No content extracted from {file_path}")
             return ""
-
+        
+        # If the files besides job description or resume is uploaded
+        # via the upload button in chat input window then return 
+        # the documents so that they can be converted to vectors
+        if parsing_for_vector:
+            return documents
+        
         # Combine all pages into one clean string
         full_text = "\n\n".join(doc.page_content for doc in documents)
         return full_text.strip()

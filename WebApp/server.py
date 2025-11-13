@@ -15,6 +15,7 @@ from database_sqlite import (
 from typing import List
 from dotenv import load_dotenv
 from Screening_AI import ScreenAI
+from RAG import VectorStorage
 import asyncio
 import json
 import uuid
@@ -26,6 +27,15 @@ logging.basicConfig(level=logging.INFO)
 logger = logging.getLogger(__name__)
 
 app = FastAPI(title="RecruitmentAI")
+
+
+# === Initialize AI ===
+AI = ScreenAI()
+
+# === Initialize Vector store for RAG ===
+vectorStore = VectorStorage()
+
+
 
 app.add_middleware(
     CORSMiddleware,
@@ -186,8 +196,7 @@ async def process_resumes(task_id: str, resume_files: List[UploadFile], thread_i
         task["total"] = total_files
         logger.info(f"[THREAD {thread_id}] Processing {total_files} resumes (task: {task_id})")
 
-        # === Initialize AI ===
-        AI = ScreenAI()
+        
 
         # === Process each resume ===
         for idx, resume_file in enumerate(resume_files):
@@ -231,12 +240,12 @@ async def process_resumes(task_id: str, resume_files: List[UploadFile], thread_i
                 if fit_score > 7:
                     hire = 1
                     extracted_resume_data.update({
-                        "shorlisted" : 1
+                        "shortlisted" : 1
                     })
                 else:
                     hire = 0
                     extracted_resume_data.update({
-                        "shorlisted" : 1
+                        "shortlisted" : 0
                     })
                     
                 hire_probability = AI.predict_hiring_decision(
@@ -257,6 +266,7 @@ async def process_resumes(task_id: str, resume_files: List[UploadFile], thread_i
                     "ai_hire_probability": hire_probability,
                     "evaluated": 0
                 })
+
 
                 insert_extracted_data(extracted_resume_data=extracted_resume_data)
                 processed_count += 1
@@ -329,6 +339,67 @@ async def process_resumes(task_id: str, resume_files: List[UploadFile], thread_i
             tasks[task_id]["progress"] = 0
         logger.error(f"[THREAD {thread_id}] Task {task_id} failed: {str(e)}")
 
+
+@app.post("/upload_files")
+async def upload_files(
+    thread_id: str = Form(...),
+    files: List[UploadFile] = File(...)  # ← plural + List
+):
+    temp_paths = []
+    try:
+        if not thread_id or not thread_id.strip():
+            raise HTTPException(status_code=400, detail="thread_id is required and cannot be empty.")
+
+        if not files or not any(f.filename for f in files):
+            raise HTTPException(status_code=400, detail="At least one file is required.")
+
+        processed_count = 0
+        for file in files:
+            if not file.filename:
+                continue
+
+            ext = file.filename.rsplit(".", 1)[-1].lower()
+            if ext not in {"pdf", "txt", "docx", "csv", "json", "xlsx", "pptx"}:
+                logger.warning(f"Skipping unsupported file: {file.filename}")
+                continue
+
+            raw_bytes = await file.read()
+            if not raw_bytes:
+                continue
+
+            temp_file = tempfile.NamedTemporaryFile(delete=False, suffix=f".{ext}")
+            temp_file.write(raw_bytes)
+            temp_file.close()
+            temp_path = temp_file.name
+            temp_paths.append(temp_path)
+
+            file_document = parse_file(temp_path, parsing_for_vector=True)
+            vectorStore.store_embeddings(
+                thread_id=thread_id,
+                documents=file_document
+            )
+            processed_count += 1
+
+            logger.info(f"[THREAD {thread_id}] {file.filename} File added to knowledge base ")
+        return JSONResponse({
+            "success": True,
+            "message": f"Successfully uploaded {processed_count} file(s)",
+            "processed_count": processed_count
+        })
+
+    except HTTPException:
+        raise
+    except Exception as e:
+        logger.error(f"[THREAD {thread_id}] File upload failed: {str(e)}")
+        raise HTTPException(status_code=500, detail="File processing failed")
+    finally:
+        for path in temp_paths:
+            if os.path.exists(path):
+                try:
+                    os.unlink(path)
+                except:
+                    pass
+
 # ====================== Query Endpoint ======================
 @app.post('/query')
 def answer_query(
@@ -365,12 +436,16 @@ def health_check():
 
 # ====================== Run Server ======================
 if __name__ == "__main__":
+    
+    
+    os.makedirs(os.environ.get('DATABASE_DIR', ''), exist_ok=True)
+    os.makedirs(os.environ.get('CHAT_HISTORY_DIR', ''), exist_ok=True)
+    os.makedirs(os.environ.get("EMBEDDING_DIR",'') , exist_ok=True)
+
     test_connection()
     drop_table()
     create_table()
 
-    os.makedirs(os.environ.get('DATABASE_DIR', ''), exist_ok=True)
-    os.makedirs(os.environ.get('CHAT_HISTORY_DIR', ''), exist_ok=True)
 
     port = 3333
     logger.info(f"Starting server on port {port}")

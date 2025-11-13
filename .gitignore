@@ -12,4 +12,5 @@ Uploads/
 *.parquet
 *.csv
 *.arrow
-AI_Model/resume_screening_model.pkl
+AI_Model/
+*.bin

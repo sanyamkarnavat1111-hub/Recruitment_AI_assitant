@@ -14,9 +14,6 @@ load_dotenv()
 
 
 
-
-
-
 def database_retriever(state: ChatState) -> ChatState:
     user_question = state['messages'][-1].content
     thread_id = state.get("thread_id")
@@ -103,6 +100,11 @@ graph.add_edge("database_retriever" , "query")
 graph.add_edge("query", END)
 
 # Sqlite 3 database checkpointer
+
+
+
+os.makedirs(os.environ['CHAT_HISTORY_DIR'],exist_ok=True)
+
 db_conn = sqlite3.connect(f"{os.environ['CHAT_HISTORY_DIR']}/chat_history.db" , check_same_thread=False)
 sqlite_memory = SqliteSaver(conn=db_conn)
 

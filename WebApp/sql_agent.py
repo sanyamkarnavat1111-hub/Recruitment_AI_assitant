@@ -1,11 +1,16 @@
 from langchain_community.utilities import SQLDatabase
 from langchain_community.agent_toolkits import create_sql_agent
 from LLM_models import chat_llm
+from dotenv import load_dotenv
+import os
 
+load_dotenv()
 
 
 # Step 1: Create the database connection
-db = SQLDatabase.from_uri('sqlite:///Database/Users.db')
+os.makedirs(os.environ['DATABASE_DIR'] , exist_ok=True)
+
+db = SQLDatabase.from_uri(f'sqlite:///{os.environ['DATABASE_DIR']}/Users.db')
 
 # Step 2: Create the SQL agent
 sql_agent_executor = create_sql_agent(
