@@ -61,7 +61,7 @@ def database_retriever(state: ChatState) -> ChatState:
         output = sql_agent.execute_sql_query(sql_query=fixed_sql_query)
         return {"sql_retrieval": output}
     except Exception as e :
-        return {"sql_retrieval": "Fatabase retrieval failed..."}
+        return {"sql_retrieval": "Database retrieval failed..."}
 
 
 # ==============================

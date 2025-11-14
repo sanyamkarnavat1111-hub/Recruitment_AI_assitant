@@ -1,14 +1,18 @@
-
-
 # Enable streaming in the chat and response generation
-
 
 # The database entry like total year of experience should keep on getting updated 
 (like if at the time of upload the candidate had 3 years of experience then after one years it should automatically update ) 
 
-
-# Suppose from the database if user wants to retreive candidate for other roles then it should suppor that as well
+# Suppose from the database if user wants to retreive candidate for other roles then it should support that as well
 (During job description upload if JD has requirement of data scientist but if our database has android developers then next time
 if HR asks to shortlist based on that then our bot should do it .)
 
 # Improve sql agent by making it yield list of SQL queries instead of one for more robust data retrieval
+
+# Improve prompts in util code ( Sometimes no followups are asked , sometimes very short answers are povided for the queries.)
+
+# Add a regex checker for email , url and phone number.
+
+# Add a middlewear for thread id so that for every request we do not have to check if the thread id is provided or not.
+
+# Improve the SGD ML model (Add the [SEP] tokens to separate resume text from job description text and retrain the model.)
