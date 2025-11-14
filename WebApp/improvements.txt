@@ -2,7 +2,6 @@
 
 # Enable streaming in the chat and response generation
 
-# Add a progress bar while uploading resume to showcase progress of upload , analysis and data extraction
 
 # The database entry like total year of experience should keep on getting updated 
 (like if at the time of upload the candidate had 3 years of experience then after one years it should automatically update ) 
@@ -12,4 +11,4 @@
 (During job description upload if JD has requirement of data scientist but if our database has android developers then next time
 if HR asks to shortlist based on that then our bot should do it .)
 
-# Keep the job description and resume upload component visible throughout the chat.
+# Improve sql agent by making it yield list of SQL queries instead of one for more robust data retrieval

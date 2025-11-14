@@ -11,6 +11,19 @@ from langchain_core.output_parsers import StrOutputParser
 from LLM_models import llm_resume_data_extractor , llm_resume_analysis , chat_llm
 from tenacity import retry , stop_after_attempt , wait_fixed
 from database_sqlite import get_non_evluated_candidates , update_evaluated_candidates
+import re
+
+
+
+def remove_extra_space(text: str) -> str:
+    # Remove extra blank lines (more than one consecutive newline)
+    cleaned_text = re.sub(r'\n+', '\n', text.strip())
+    # Remove extra spaces between words (replace multiple spaces with a single space)
+    cleaned_text = re.sub(r'\s+', ' ', cleaned_text)
+    # Ensure there is a single space after periods and punctuation
+    cleaned_text = re.sub(r'([.,;!?])\s*', r'\1 ', cleaned_text)
+    return cleaned_text.strip()
+
 
 
 def parse_file(file_path: str , parsing_for_vector=False) -> str:

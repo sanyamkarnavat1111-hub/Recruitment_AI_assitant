@@ -7,7 +7,7 @@ from bot_graph import workflow
 from langchain_core.messages import HumanMessage, AIMessage
 import logging
 import tempfile
-from utils import parse_file, extract_data_from_resume, analyze_resume, get_fittest_candidates
+from utils import parse_file, extract_data_from_resume, analyze_resume, get_fittest_candidates , remove_extra_space
 from database_sqlite import (
     test_connection, drop_table, create_table,
     insert_extracted_data, insert_job_description, get_job_description
@@ -95,6 +95,10 @@ async def upload_jd(
         logger.info(f"[THREAD {thread_id}] JD temp file created: {temp_jd_path}")
 
         job_description_data = parse_file(temp_jd_path)
+        # Remove extra space from the text if any
+        job_description_data = remove_extra_space(text=job_description_data)
+
+
         logger.info(f"[THREAD {thread_id}] JD parsed successfully (len={len(job_description_data)} chars)")
 
         # Cleanup
@@ -226,6 +230,9 @@ async def process_resumes(task_id: str, resume_files: List[UploadFile], thread_i
 
                 # Parse
                 parsed_resume_text = parse_file(temp_resume_path)
+                # Remove extra spaces from resume 
+                parsed_resume_text = remove_extra_space(text=parsed_resume_text)
+                # Extract the data from resume
                 extracted_resume_data = extract_data_from_resume(resume_data=parsed_resume_text)
 
                 # Analyze
