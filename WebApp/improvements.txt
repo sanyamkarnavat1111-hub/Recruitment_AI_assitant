@@ -16,3 +16,5 @@ if HR asks to shortlist based on that then our bot should do it .)
 # Add a middlewear for thread id so that for every request we do not have to check if the thread id is provided or not.
 
 # Improve the SGD ML model (Add the [SEP] tokens to separate resume text from job description text and retrain the model.)
+
+# Add a summarizer for job description as well .

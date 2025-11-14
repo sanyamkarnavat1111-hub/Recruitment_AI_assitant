@@ -56,7 +56,7 @@ class VectorStorage:
 
 if __name__ == "__main__":
     obj = VectorStorage()
-    res = obj.convert_to_embeddings(file_path="Uploads/data-scientist-resume-example.pdf" , thread_id="sam")
+    res = obj.store_embeddings(file_path="Uploads/data-scientist-resume-example.pdf" , thread_id="sam")
 
     
 
