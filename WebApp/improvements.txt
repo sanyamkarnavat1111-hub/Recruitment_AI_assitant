@@ -18,3 +18,9 @@ if HR asks to shortlist based on that then our bot should do it .)
 # Improve the SGD ML model (Add the [SEP] tokens to separate resume text from job description text and retrain the model.)
 
 # Add a summarizer for job description as well .
+
+
+# Try migrating the data in SQL data to RAG
+    - Add metadata to stored documents like thread id , name , email and other candidate details
+    - Add filters in similarity search (for now we only have filter using thread_id )
+    - Add a query rewriter / rephraser that understand the chat history and rewrites the queries of user for RAG retrieval of database
