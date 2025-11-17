@@ -241,9 +241,15 @@ async def process_resumes(task_id: str, resume_files: List[UploadFile], thread_i
                 temp_resume_path = temp_file.name
 
                 # Parse
+                logger.info(f"Parsing resume {idx} ...")
                 parsed_resume_text = parse_file(temp_resume_path)
+                logger.info(f"Parsing done for resume {idx} ...")
+
+
                 # Remove extra spaces from resume 
                 parsed_resume_text = remove_extra_space(text=parsed_resume_text)
+
+                logger.info(f"Extracting data from  resume {idx} ...")
                 # Extract the data from resume
                 extracted_resume_data = extract_data_from_resume(resume_data=parsed_resume_text)
 
@@ -286,19 +292,26 @@ async def process_resumes(task_id: str, resume_files: List[UploadFile], thread_i
                     "evaluated": 0
                 })
 
-                # check if the extracted email , linked in url and phone number are valid or not
+                # # check if the extracted email , linked in url and phone number are valid or not
 
-                email_address , linkedin_url , phone_number = validate_contact_info(
-                    email= extracted_resume_data['email_address'],
-                    linkedin_url=extracted_resume_data['linkedin_url'],
-                    phone_number=extracted_resume_data['contact_number']
-                )
+                # logger.info(f"Starting check for info")
+                # email_address , linkedin_url , phone_number = validate_contact_info(
+                #     email=extracted_resume_data['email_address'],
+                #     linkedin_url=extracted_resume_data['linkedin_url'],
+                #     phone_number=extracted_resume_data['contact_number']
+                # )
 
-                extracted_resume_data.update({
-                    "email_address" : email_address,
-                    "linkedin_url" : linkedin_url,
-                    "phone_number" : phone_number
-                })
+
+                # logger.info("Check done..")
+
+                # extracted_resume_data.update({
+                #     "email_address" : email_address,
+                #     "linkedin_url" : linkedin_url,
+                #     "phone_number" : phone_number
+                # })
+
+
+                
 
 
                 insert_extracted_data(extracted_resume_data=extracted_resume_data)
@@ -466,6 +479,7 @@ def health_check():
 # ====================== Run Server ======================
 if __name__ == "__main__":
     
+    logger.info(f"GROQ API key :- {os.environ['GROQ_API_KEY']}")
     
     os.makedirs(os.environ.get('DATABASE_DIR', ''), exist_ok=True)
     os.makedirs(os.environ.get('CHAT_HISTORY_DIR', ''), exist_ok=True)

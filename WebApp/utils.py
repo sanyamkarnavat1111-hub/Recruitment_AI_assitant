@@ -9,7 +9,7 @@ from langchain_community.document_loaders import (
 from langchain_core.prompts import ChatPromptTemplate
 from langchain_core.output_parsers import StrOutputParser
 from LLM_models import llm_resume_data_extractor , llm_resume_analysis , chat_llm , chat_llm_ollama
-from tenacity import retry , stop_after_attempt , wait_fixed
+from tenacity import retry , stop_after_attempt , wait_exponential , wait_fixed
 from database_sqlite import get_non_evluated_candidates , update_evaluated_candidates
 import re
 
@@ -37,15 +37,15 @@ def validate_contact_info(email, linkedin_url, phone_number):
     phone_pattern = r'^\+?[1-9]\d{1,14}$'  # Basic international phone number validation
 
     # Check email validity
-    if not re.match(email_pattern, email):
+    if not email or not re.match(email_pattern, email):
         email = None
 
     # Check LinkedIn URL validity
-    if not re.match(linkedin_pattern, linkedin_url):
+    if not linkedin_url and not re.match(linkedin_pattern, linkedin_url):
         linkedin_url = None
 
     # Check phone number validity
-    if not re.match(phone_pattern, phone_number):
+    if not phone_number and not re.match(phone_pattern, phone_number):
         phone_number = None
 
     return email, linkedin_url, phone_number
@@ -96,7 +96,7 @@ def parse_file(file_path: str , parsing_for_vector=False) -> str:
         return ""
     
 
-@retry(stop=stop_after_attempt(2), wait=wait_fixed(2))
+@retry(stop=stop_after_attempt(2), wait=wait_fixed(5))
 def summarize_job_description(job_description : str) -> str:
 
     try :
@@ -127,7 +127,7 @@ def summarize_job_description(job_description : str) -> str:
         print(f"Error while summarizing job description :- {e}")
 
 
-@retry(stop=stop_after_attempt(5), wait=wait_fixed(5))
+@retry(stop=stop_after_attempt(5), wait=wait_exponential(multiplier=2 , max=25))
 def extract_data_from_resume(resume_data: str) -> dict:
     
     # Define the extraction prompt

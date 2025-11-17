@@ -120,9 +120,9 @@ def insert_extracted_data(
     try:
         # Extract fields for DB
         thread_id = extracted_resume_data.get("thread_id", "")
-        candidate_name = extracted_resume_data.get("candidate_name", "")
+        candidate_name = str(extracted_resume_data.get("candidate_name", "")).lower()
         contact_number = extracted_resume_data.get("contact_number", "")
-        location = extracted_resume_data.get("location", "")
+        location = str(extracted_resume_data.get("location", "")).lower()
         email_address = extracted_resume_data.get("email_address", "")
         linkedin_url = extracted_resume_data.get("linkedin_url", "")
         total_experience = int(extracted_resume_data.get("total_experience", 0))

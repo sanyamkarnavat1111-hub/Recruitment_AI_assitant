@@ -36,3 +36,4 @@
     # Add a summarizer for job description as well .
     # The database entry like total year of experience should keep on getting updated (like if at the time of upload the candidate had 3 years of experience then after one years it should automatically update ) 
     # Add a regex checker for email , url and phone number.
+    # Added case insensitive 'ilike' searches for names and other text based searches in SQL agent.

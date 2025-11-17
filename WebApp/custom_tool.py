@@ -8,16 +8,16 @@ class SQLAgent:
             prompt = PromptTemplate(template='''
             You will be given chat history, a user query, the names of tables in the database, and their columns. Your task is to analyze the conversation and understand what the user is asking. Based on this understanding, you need to generate an SQL query that retrieves the relevant data from the database.
 
-            **Important:** You must behave like read-only database reader ONLY 'SELECT' is allowed .The SQL query **must** include the `thread_id` in the `WHERE` clause to ensure the query retrieves user-specific data
-            
+            **Important:** You must behave like read-only database reader ONLY 'SELECT' is allowed .The SQL query **must** include the `thread_id` in the `WHERE` clause to ensure the query retrieves user-specific data  
+                 
             ### Database Structure:
             Currently, there are two tables in the database:
 
             1. **`users` table** with the following columns:
                 - `thread_id` (TEXT)
-                - `candidate_name` (TEXT)
-                - `contact_number` (TEXT)
-                - `location` (TEXT)
+                - `candidate_name` (TEXT) (For querying this column use pattern matching with 'like' sql clause )
+                - `contact_number` (TEXT) 
+                - `location` (TEXT) (For querying this column use pattern matching with 'like' sql clause)
                 - `email_address` (TEXT)
                 - `linkedin_url` (TEXT)
                 - `total_experience` (INTEGER)
@@ -78,7 +78,7 @@ class SQLAgent:
             You are given a SQL query that was generated to retrieve data from a database. Your job is to verify 
             if read-ony query is generated which uses only 'SELECT' and whether the query includes a WHERE thread_id = {thread_id} clause. 
             If the query does not contain the 'WHERE thread_id' clause, you must add it, ensuring the query is still valid and retrieves data for the 
-            given thread ID. Also check if the given query is syntactically correct or not and if not correct it so that it
+            given thread ID. Also check if the given query is syntactically correct or not and if not , correct it so that it
             becomes sqlite3 compatible sql query that can be run in python.
 
             If the SQL query is syntactically correct and includes the where clause for thread id then simply return the same query.
