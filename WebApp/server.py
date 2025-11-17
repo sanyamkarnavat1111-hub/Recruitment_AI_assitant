@@ -13,7 +13,8 @@ from utils import (
     analyze_resume, 
     get_fittest_candidates , 
     remove_extra_space,
-    summarize_job_description
+    summarize_job_description,
+    validate_contact_info
 )
 from database_sqlite import (
     test_connection, drop_table, create_table,
@@ -280,6 +281,20 @@ async def process_resumes(task_id: str, resume_files: List[UploadFile], thread_i
                     "thread_id": thread_id,
                     "ai_hire_probability": hire_probability,
                     "evaluated": 0
+                })
+
+                # check if the extracted email , linked in url and phone number are valid or not
+
+                email_address , linkedin_url , phone_number = validate_contact_info(
+                    email= extracted_resume_data['email_address'],
+                    linkedin_url=extracted_resume_data['linkedin_url'],
+                    phone_number=extracted_resume_data['contact_number']
+                )
+
+                extracted_resume_data.update({
+                    "email_address" : email_address,
+                    "linkedin_url" : linkedin_url,
+                    "phone_number" : phone_number
                 })
 
 

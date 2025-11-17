@@ -26,6 +26,34 @@ def remove_extra_space(text: str) -> str:
 
 
 
+def validate_contact_info(email, linkedin_url, phone_number):
+    # Email regex pattern
+    email_pattern = r'^[a-zA-Z0-9_.+-]+@[a-zA-Z0-9-]+\.[a-zA-Z0-9-.]+$'
+    
+    # LinkedIn URL regex pattern (simple validation)
+    linkedin_pattern = r'^(https?:\/\/)?(www\.)?linkedin\.com\/in\/[a-zA-Z0-9-]+\/?$'
+    
+    # Phone number regex pattern (international format, e.g., +1-555-555-5555 or 555-555-5555)
+    phone_pattern = r'^\+?[1-9]\d{1,14}$'  # Basic international phone number validation
+
+    # Check email validity
+    if not re.match(email_pattern, email):
+        email = None
+
+    # Check LinkedIn URL validity
+    if not re.match(linkedin_pattern, linkedin_url):
+        linkedin_url = None
+
+    # Check phone number validity
+    if not re.match(phone_pattern, phone_number):
+        phone_number = None
+
+    return email, linkedin_url, phone_number
+
+
+
+
+
 def parse_file(file_path: str , parsing_for_vector=False) -> str:
     """
     Load PDF, DOCX, or TXT file and return plain text string.
@@ -271,7 +299,7 @@ def get_fittest_candidates(thread_id: str) -> str:
             '''
             You are an expert HR analyst. Below is a list of detailed of all candidates details who applied for a job.
             The fit score is assigned to the candidate to denote how fit they are for the job role assigned.
-            Ideally only those candidates are shortlisted whose fit score is greater than or equal to 7 for analysis , but if there
+            Ideally only those candidates are shortlisted whose fit score is equal to or more than 7 for analysis , but if there
             aren't any shortlisted candidates then respond with approriate details of candidate which has some potential based on the analysis details that
             you have , but if none of the candidate are good enough then simply reply with apporiate response that no candidates are fit for the given job desription.
 
@@ -283,8 +311,7 @@ def get_fittest_candidates(thread_id: str) -> str:
 
             Write a **concise 3–4 sentence summary** of only candidates that were selected by you and all of their details. 
 
-            Follow-Up :- Provide one liner follow up question which user can ask you in return , based on the data that you have 
-
+            Follow-Up :- Provide one liner follow up question which user can ask you in return , based on the data that you have
             '''
         )
 
