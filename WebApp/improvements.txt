@@ -13,7 +13,7 @@
 
 
                                 *** Pending *** 
-    # Improve the SGD ML model (Add the [SEP] tokens to separate resume text from job description text and retrain the model.)
+    
 
     # Improve prompts in util code ( Sometimes no followups are asked , sometimes very short answers are povided for the queries.)
 
@@ -37,3 +37,6 @@
     # The database entry like total year of experience should keep on getting updated (like if at the time of upload the candidate had 3 years of experience then after one years it should automatically update ) 
     # Add a regex checker for email , url and phone number.
     # Added case insensitive 'ilike' searches for names and other text based searches in SQL agent.
+
+    (The model did not improved though)
+    # Improve the SGD ML model (Add the [SEP] tokens to separate resume text from job description text and retrain the model.)
