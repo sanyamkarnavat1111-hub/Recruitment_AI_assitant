@@ -241,17 +241,14 @@ async def process_resumes(task_id: str, resume_files: List[UploadFile], thread_i
                 temp_resume_path = temp_file.name
 
                 # Parse
-                logger.info(f"Parsing resume {idx} ...")
                 parsed_resume_text = parse_file(temp_resume_path)
-                logger.info(f"Parsing done for resume {idx} ...")
-
-
                 # Remove extra spaces from resume 
                 parsed_resume_text = remove_extra_space(text=parsed_resume_text)
-
-                logger.info(f"Extracting data from  resume {idx} ...")
                 # Extract the data from resume
+
+                logger.info(f"[THREAD {thread_id}] Started extraction for resume ... {idx}")
                 extracted_resume_data = extract_data_from_resume(resume_data=parsed_resume_text)
+                logger.info(f"[THREAD {thread_id}] Extration done for resume ... {idx}")
 
                 # Analyze
                 analysis_result = analyze_resume(

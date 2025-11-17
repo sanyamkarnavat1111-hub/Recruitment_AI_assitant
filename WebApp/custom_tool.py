@@ -1,8 +1,11 @@
 from LLM_models import llm_sql_fixer , llm_sql_query_generator
 from langchain_core.prompts import PromptTemplate
 from database_sqlite import get_db_connection
+from tenacity import retry , wait_exponential , stop_after_attempt
 
 class SQLAgent:
+
+    @retry(stop=stop_after_attempt(3) , wait=wait_exponential(multiplier=2 , max=20))
     def generate_sql_query(self, thread_id: str , chat_history : list[str] , user_query : str) -> str:
         try:
             prompt = PromptTemplate(template='''
@@ -71,7 +74,7 @@ class SQLAgent:
         except Exception as e:
             return f"Error generating SQL: {str(e)}"
 
-    
+    @retry(stop=stop_after_attempt(3) , wait=wait_exponential(multiplier=2 , max=20))
     def sql_query_fixer(self,thread_id ,sql_query : str) -> str:
         
         prompt = PromptTemplate(template='''
@@ -82,7 +85,8 @@ class SQLAgent:
             becomes sqlite3 compatible sql query that can be run in python.
 
             If the SQL query is syntactically correct and includes the where clause for thread id then simply return the same query.
-
+            Check for any redundancy in query retrieval and repition if any.
+            
             ### SQL Query:
             {sql_query}
 
