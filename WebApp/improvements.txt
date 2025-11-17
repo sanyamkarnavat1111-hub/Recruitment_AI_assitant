@@ -26,6 +26,7 @@
         - Add filters in similarity search (for now we only have filter using thread_id )
         - Add a query rewriter / rephraser that understand the chat history and rewrites the queries of user for RAG retrieval of database
 
+    # Add api rate limit to avoid spamming and abuse
 
 
 
