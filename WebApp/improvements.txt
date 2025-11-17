@@ -40,3 +40,26 @@
 
     (The model did not improved though)
     # Improve the SGD ML model (Add the [SEP] tokens to separate resume text from job description text and retrain the model.)
+
+
+
+# Your Metadata Must Support 3 Filtering Layers
+
+To handle queries such as “give me email of Kandace”, you need three things in your metadata:
+
+metadata = {
+    "thread_id": "...",
+    "type": "user",  
+    "candidate_name": "Kandace Johnson",
+    "contact_number": "...",
+    "email_address": "...",
+    "skills": "...",
+    ...
+}
+
+
+thread_id → Ensures the chatbot only looks inside this user's session.
+
+type=user → Prevents job descriptions from mixing with resumes.
+
+candidate_name → Enables semantic + metadata filtering for "Kandace".
