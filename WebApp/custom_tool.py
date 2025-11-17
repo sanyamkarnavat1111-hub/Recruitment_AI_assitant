@@ -95,14 +95,39 @@ class SQLAgent:
     def sql_query_fixer(self,thread_id ,sql_query : str) -> str:
         
         prompt = PromptTemplate(template='''
-            You are given a SQL query that was generated to retrieve data from a database. Your job is to verify 
-            if read-ony query is generated which uses only 'SELECT' and whether the query includes a WHERE thread_id = {thread_id} clause. 
-            If the query does not contain the 'WHERE thread_id' clause, you must add it, ensuring the query is still valid and retrieves data for the 
-            given thread ID. Also check if the given query is syntactically correct or not and if not , correct it so that it
-            becomes sqlite3 compatible sql query that can be run in python.
+            You are given a SQL query that was generated to retrieve data from a SQLite3 database.
+                                
+            Your job is to validate and correct this SQL query according to the following rules:
 
-            If the SQL query is syntactically correct and includes the where clause for thread id then simply return the same query.
-            Check for any redundancy in query retrieval and repition if any.
+            ### 1. Read-Only Enforcement
+            - The query must be strictly read-only and use ONLY the 'SELECT' statement.
+            - If the query contains INSERT, UPDATE, DELETE, DROP, CREATE, ALTER, TRUNCATE, REPLACE, or any non-SELECT operation, convert it into a valid SELECT query consistent with the intent of the original query.
+
+            ### 2. Thread ID Requirement
+            - The final SQL query MUST include a 'WHERE thread_id = {thread_id}' clause.  
+            - If a WHERE clause already exists but does NOT include 'thread_id', append 'AND thread_id = {thread_id}'.
+            - If there is no WHERE clause at all, add 'WHERE thread_id = {thread_id}'.
+            - Never hallucinate a thread_id. Use the '{thread_id}' template variable exactly as provided.
+
+            ### 3. Name / Email Pattern Matching
+            - If the query includes filters on names or email addresses:
+                - Convert any name or email to lowercase via SQL using LOWER(column_name).
+                - Use pattern matching with LIKE to search for similar names or emails.
+
+            ### 4. Syntax Validation (SQLite3 Compatible)
+            - Validate whether the SQL syntax is correct for SQLite3.
+            - If not correct, fix the syntax so the final SQL query runs in Python using sqlite3.
+            - Ensure correct table/column reference formatting.
+            - Remove trailing commas, mismatched parentheses, or repeated/duplicate columns.
+
+            ### 5. Avoid Redundancy
+            - Remove repeated columns, repeated WHERE conditions, or duplicated JOINs.
+            - Keep the query minimal, clean, and logically consistent.
+
+            ### 6. Output Requirements
+            - If the SQL query is already syntactically valid, read-only, and includes the correct thread_id clause, return it unchanged.
+            - Otherwise, return the corrected SQL query.
+            - Return only the SQL query with no explanation.
             
             ### SQL Query:
             {sql_query}
@@ -161,7 +186,7 @@ if __name__ == "__main__":
     "AI : Here are their phone numbers 123124523 and 98578032412"
     ]
 
-    user_query = f"Can you give me their email ? \n Thread ID :- {thread_id}"
+    user_query = f"Can you give me summarized info of these candidates and also how to contact them ? \n Thread ID :- {thread_id}"
 
     obj  = SQLAgent()
 
@@ -171,5 +196,13 @@ if __name__ == "__main__":
         chat_history=chat_history,
         user_query=user_query
     )
-    
+
+    # fixed_sql_query = obj.sql_query_fixer(
+    #     thread_id=thread_id,
+    #     sql_query=generated_sql
+    # )
+    # print("Fixed SQL :-" , fixed_sql_query)
+
+
     print("Generated SQL :-" , generated_sql)
+    
