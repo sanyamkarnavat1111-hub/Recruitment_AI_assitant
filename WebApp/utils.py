@@ -8,7 +8,7 @@ from langchain_community.document_loaders import (
 )
 from langchain_core.prompts import ChatPromptTemplate
 from langchain_core.output_parsers import StrOutputParser
-from LLM_models import llm_resume_data_extractor , llm_resume_analysis , chat_llm
+from LLM_models import llm_resume_data_extractor , llm_resume_analysis , chat_llm , chat_llm_ollama
 from tenacity import retry , stop_after_attempt , wait_fixed
 from database_sqlite import get_non_evluated_candidates , update_evaluated_candidates
 import re
@@ -67,6 +67,38 @@ def parse_file(file_path: str , parsing_for_vector=False) -> str:
         print(f"Error loading {file_path}: {e}")
         return ""
     
+
+@retry(stop=stop_after_attempt(2), wait=wait_fixed(2))
+def summarize_job_description(job_description : str) -> str:
+
+    try :
+
+        prompt = ChatPromptTemplate.from_template(
+            '''
+            You are a helpful Human Resource assistant , your job is to summarize the give job description in as short way 
+            as possible but without skipping and retaining the important infomation like experience required , location , job type(work from home , on-site,remote etc.) 
+            skills required etc. and other useful information from the job description.
+
+            Following is the job description :- 
+            {job_description}
+            '''
+        )
+
+        chain = prompt | chat_llm_ollama | StrOutputParser()
+
+        summarized_jd = chain.invoke(input={
+            "job_description" : job_description
+        })
+
+        if summarized_jd:
+            return summarized_jd
+        else:
+            raise ValueError("Summarized job description was empty")
+    
+    except Exception as e :
+        print(f"Error while summarizing job description :- {e}")
+
+
 @retry(stop=stop_after_attempt(5), wait=wait_fixed(5))
 def extract_data_from_resume(resume_data: str) -> dict:
     
@@ -215,7 +247,7 @@ def get_fittest_candidates(thread_id: str) -> str:
             shorlisted = int(shorlisted)
 
             # Clean and format
-            exp_str = f"{exp} year{'s' if exp != 1 else ''}" if exp else "N/A"
+            exp_str = f"{exp} year's" if exp else "N/A"
 
             candidate_block = [
                 f"{idx}. Name: {name}",
@@ -235,13 +267,11 @@ def get_fittest_candidates(thread_id: str) -> str:
         formatted_candidate_data = "\n".join(result)
 
         ###########   Langchain workflow   ############
-
-
         prompt = ChatPromptTemplate.from_template(
             '''
             You are an expert HR analyst. Below is a list of detailed of all candidates details who applied for a job.
             The fit score is assigned to the candidate to denote how fit they are for the job role assigned.
-            Ideally only those candidates are shortliested whose fit score is greater than 7 for analysis , but if there
+            Ideally only those candidates are shortlisted whose fit score is greater than or equal to 7 for analysis , but if there
             aren't any shortlisted candidates then respond with approriate details of candidate which has some potential based on the analysis details that
             you have , but if none of the candidate are good enough then simply reply with apporiate response that no candidates are fit for the given job desription.
 
@@ -251,7 +281,7 @@ def get_fittest_candidates(thread_id: str) -> str:
 
             ---
 
-            Write a **concise 3–4 sentence summary** of only candidates that were selected by you highlighting:Name of candidates , email address ,fit score , Key strengths (e.g., experience, skills)
+            Write a **concise 3–4 sentence summary** of only candidates that were selected by you and all of their details. 
 
             Follow-Up :- Provide one liner follow up question which user can ask you in return , based on the data that you have 
 

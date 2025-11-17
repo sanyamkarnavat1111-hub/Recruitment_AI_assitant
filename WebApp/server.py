@@ -7,7 +7,14 @@ from bot_graph import workflow
 from langchain_core.messages import HumanMessage, AIMessage
 import logging
 import tempfile
-from utils import parse_file, extract_data_from_resume, analyze_resume, get_fittest_candidates , remove_extra_space
+from utils import (
+    parse_file, 
+    extract_data_from_resume, 
+    analyze_resume, 
+    get_fittest_candidates , 
+    remove_extra_space,
+    summarize_job_description
+)
 from database_sqlite import (
     test_connection, drop_table, create_table,
     insert_extracted_data, insert_job_description, get_job_description
@@ -97,7 +104,8 @@ async def upload_jd(
         job_description_data = parse_file(temp_jd_path)
         # Remove extra space from the text if any
         job_description_data = remove_extra_space(text=job_description_data)
-
+        # Summarize the job description
+        job_description_data = summarize_job_description(job_description=job_description_data)
 
         logger.info(f"[THREAD {thread_id}] JD parsed successfully (len={len(job_description_data)} chars)")
 
@@ -187,7 +195,7 @@ async def process_resumes(task_id: str, resume_files: List[UploadFile], thread_i
         job_description_data = get_job_description(thread_id=thread_id)
         if not job_description_data:
             raise HTTPException(status_code=400, detail="Job description not found...")
-
+        
         success["job_description"] = True  # Mark JD as present
 
         # === Validate inputs ===
@@ -316,7 +324,6 @@ async def process_resumes(task_id: str, resume_files: List[UploadFile], thread_i
         initial_state = {
             "messages": [],
             "thread_id": thread_id,
-            "job_description": job_description_data,
             "sql_retrieval": ""
         }
         workflow.update_state(config=config, values=initial_state)

@@ -55,6 +55,7 @@ def create_table():
         cur.execute('''
             CREATE TABLE IF NOT EXISTS users (
                 tid INTEGER PRIMARY KEY AUTOINCREMENT,
+                created_at TIMESTAMP DEFAULT CURRENT_TIMESTAMP,
                 thread_id TEXT NOT NULL,
                 candidate_name TEXT,
                 contact_number TEXT,
@@ -187,25 +188,39 @@ def insert_job_description(
         conn.close()
 
 
-def get_non_evluated_candidates(thread_id : str ):
-    try :
+def get_non_evluated_candidates(thread_id: str):
+    try:
         conn = get_db_connection()
         cursor = conn.cursor()
 
         query = """
-            SELECT tid , candidate_name, total_experience, fit_score, resume_analysis_summary , shortlisted 
-            FROM users 
+            SELECT 
+                tid,
+                candidate_name,
+                -- Dynamic experience: stored exp + years since created_at
+                total_experience 
+                    + CAST(
+                        (julianday('now') - julianday(created_at)) / 365.25 
+                        AS INTEGER
+                    ) AS effective_experience,
+                fit_score,
+                resume_analysis_summary,
+                shortlisted
+            FROM users
             WHERE thread_id = ?
+            AND evaluated = 0
             ORDER BY fit_score DESC
-            """
+        """
+
         cursor.execute(query, (thread_id,))
-        rows = cursor.fetchall()
-        return rows
-    except Exception as e :
-        logger.error(f"[THREAD {thread_id}] Error getting job description ..." , e)
-    finally : 
+        return cursor.fetchall()
+
+    except Exception as e:
+        logger.error(f"[THREAD {thread_id}] Error getting job description: {e}")
+    finally:
         cursor.close()
         conn.close()
+
 
 def update_evaluated_candidates(thread_id: str, tid_list: list[int]):
     if not tid_list:
