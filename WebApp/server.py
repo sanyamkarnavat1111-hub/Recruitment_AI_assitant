@@ -1,4 +1,4 @@
-from fastapi import FastAPI, File, Form, UploadFile, HTTPException, status, BackgroundTasks
+from fastapi import FastAPI, File, Form, UploadFile, HTTPException, status, BackgroundTasks , Depends
 from fastapi.responses import FileResponse, JSONResponse, StreamingResponse
 from fastapi.middleware.cors import CORSMiddleware
 import os
@@ -53,6 +53,13 @@ app.add_middleware(
     allow_headers=["*"],
 )
 
+# Dependency function to check thread_id
+def check_thread_id(thread_id: str = Form(...)) -> str:
+    if not thread_id or not thread_id.strip():
+        raise HTTPException(status_code=400, detail="Thread ID is required.")
+    return thread_id
+
+
 # ====================== Homepage ======================
 @app.get("/")
 def homepage():
@@ -76,13 +83,11 @@ def homepage():
 # ====================== Upload Job Description ======================
 @app.post("/upload_job_description")
 async def upload_jd(
-    thread_id: str = Form(...),
+    thread_id: str = Depends(check_thread_id),
     job_description_file: UploadFile = File(..., description="Single job description file"),
 ):
     temp_jd_path: str | None = None
     try:
-        if not thread_id or not thread_id.strip():
-            raise HTTPException(status_code=400, detail="thread_id is required and cannot be empty.")
 
         if not job_description_file.filename:
             raise HTTPException(status_code=400, detail="Job description file is required.")
@@ -164,7 +169,7 @@ async def get_progress(task_id: str):
 async def upload_files(
     background_tasks: BackgroundTasks,
     resume_files: List[UploadFile] = File(...),
-    thread_id: str = Form(...)
+    thread_id: str = Depends(check_thread_id)
 ):
     task_id = str(uuid.uuid4())
     tasks[task_id] = {
@@ -200,8 +205,6 @@ async def process_resumes(task_id: str, resume_files: List[UploadFile], thread_i
         success["job_description"] = True  # Mark JD as present
 
         # === Validate inputs ===
-        if not thread_id or not thread_id.strip():
-            raise HTTPException(status_code=400, detail="thread_id is required.")
         if not resume_files or not any(f.filename for f in resume_files):
             raise HTTPException(status_code=400, detail="At least one resume file is required.")
 
@@ -371,14 +374,11 @@ async def process_resumes(task_id: str, resume_files: List[UploadFile], thread_i
 
 @app.post("/upload_files")
 async def upload_files(
-    thread_id: str = Form(...),
+    thread_id: str = Depends(check_thread_id),
     files: List[UploadFile] = File(...)  # ← plural + List
 ):
     temp_paths = []
     try:
-        if not thread_id or not thread_id.strip():
-            raise HTTPException(status_code=400, detail="thread_id is required and cannot be empty.")
-
         if not files or not any(f.filename for f in files):
             raise HTTPException(status_code=400, detail="At least one file is required.")
 
@@ -432,7 +432,7 @@ async def upload_files(
 # ====================== Query Endpoint ======================
 @app.post('/query')
 def answer_query(
-    thread_id: str = Form(...),
+    thread_id: str = Depends(check_thread_id),
     query: str = Form(...)
 ):
     try:
