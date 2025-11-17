@@ -186,7 +186,7 @@ if __name__ == "__main__":
     "AI : Here are their phone numbers 123124523 and 98578032412"
     ]
 
-    user_query = f"Can you give me summarized info of these candidates and also how to contact them ? \n Thread ID :- {thread_id}"
+    user_query = f"Can you give me job description info ? \n Thread ID :- {thread_id}"
 
     obj  = SQLAgent()
 

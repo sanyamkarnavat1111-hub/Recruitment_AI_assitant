@@ -24,6 +24,8 @@ chat_llm = ChatGroq(
 
 chat_llm_ollama = ChatOllama(
     model="llama3:8b",
+    num_gpu=1,
+    temperature=0.2
 )
 
 gemini_embeddings = GoogleGenerativeAIEmbeddings(model="gemini-embedding-001" , google_api_key=os.environ['GOOGLE_API_KEY'])
