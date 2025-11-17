@@ -53,12 +53,12 @@ def database_retriever(state: ChatState) -> ChatState:
         chat_history=conversation_history,
         user_query=user_query
         )
-        fixed_sql_query = sql_agent.sql_query_fixer(
-            thread_id=thread_id,
-            sql_query=sql_query
-        )
+        # fixed_sql_query = sql_agent.sql_query_fixer(
+        #     thread_id=thread_id,
+        #     sql_query=sql_query
+        # )
 
-        output = sql_agent.execute_sql_query(sql_query=fixed_sql_query)
+        output = sql_agent.execute_sql_query(sql_query=sql_query)
         return {"sql_retrieval": output}
     except Exception as e :
         return {"sql_retrieval": "Database retrieval failed..."}
@@ -72,7 +72,6 @@ def rag_retriever(state: ChatState) -> ChatState:
     thread_id = state["thread_id"]
 
     try :
-
         docs = vectorstore.similarity_search(
             thread_id=thread_id,
             query=user_query,

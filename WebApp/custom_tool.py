@@ -9,34 +9,55 @@ class SQLAgent:
     def generate_sql_query(self, thread_id: str , chat_history : list[str] , user_query : str) -> str:
         try:
             prompt = PromptTemplate(template='''
-            You will be given chat history, a user query, the names of tables in the database, and their columns. Your task is to analyze the conversation and understand what the user is asking. Based on this understanding, you need to generate an SQL query that retrieves the relevant data from the database.
+            You are an assistant that generates SQLite3-compatible SELECT queries based on a conversation between a human and an AI.
+            
+            ### Your tasks:
+            - Analyze the conversation history and the latest user query.
+                - Identify meaningful details such as names, email addresses, or pronouns.
 
-            **Important:** You must behave like read-only database reader ONLY 'SELECT' is allowed .The SQL query **must** include the `thread_id` in the `WHERE` clause to ensure the query retrieves user-specific data  
-                 
+            - Use these extracted details to generate the most accurate and relevant SQL query possible.
+
+            ### You are given:
+                - The full chat history
+                - The latest user message
+                - A list of database tables
+                - The columns inside those tables
+
+            ### Important rules:
+            - You are a read-only database agent. Only SELECT queries are allowed. No INSERT, UPDATE, DELETE, DROP, or modifications.
+            - Every SQL query must include thread_id in the WHERE clause to ensure the result is specific to the correct user or conversation.
+            
+            ### If your query has to include columns candidate_name or email_address then :
+                - Extract the best matching name or email from the conversation.
+                - Convert the extracted name to lowercase using LOWER() in SQL.
+                - Use pattern matching with LIKE to search for similar names or emails.
+            
+            Your final output should be only the SQL query, with no explanation.
+
             ### Database Structure:
-            Currently, there are two tables in the database:
+            Currently, there are two tables in the database 'users' and 'job_description':
 
-            1. **`users` table** with the following columns:
-                - `thread_id` (TEXT)
-                - `candidate_name` (TEXT) (For querying this column use pattern matching with 'like' sql clause )
-                - `contact_number` (TEXT) 
-                - `location` (TEXT) (For querying this column use pattern matching with 'like' sql clause)
-                - `email_address` (TEXT)
-                - `linkedin_url` (TEXT)
-                - `total_experience` (INTEGER)
-                - `skills` (TEXT)
-                - `education` (TEXT)
-                - `work_experience` (TEXT)
-                - `projects` (TEXT)
-                - `fit_score` (INTEGER)
-                - `resume_analysis_summary` (TEXT)
-                - `ai_hire_probability` (REAL)
-                - `evaluated` (INTEGER)
-                - `shortlisted` (INTEGER)
+            1. 'users' table with the following columns:
+                - thread_id (TEXT)
+                - candidate_name (TEXT)
+                - contact_number (TEXT) 
+                - location (TEXT)
+                - email_address (TEXT) 
+                - linkedin_url (TEXT)
+                - total_experience (INTEGER)
+                - skills (TEXT)
+                - education (TEXT)
+                - work_experience (TEXT)
+                - projects (TEXT)
+                - fit_score (INTEGER)
+                - resume_analysis_summary (TEXT)
+                - ai_hire_probability (REAL)
+                - evaluated (INTEGER)
+                - shortlisted (INTEGER)
 
-            2. **`job_description` table** with the following columns:
-                - `thread_id` (TEXT)
-                - `job_desc` (TEXT)
+            2. job_description has with the following columns:
+                - thread_id (TEXT)
+                - job_desc (TEXT)
 
             ### Instructions:
             1. Carefully review the **conversation history** to understand the context and what the user is asking for.
@@ -53,10 +74,6 @@ class SQLAgent:
 
             ### Provided Thread ID:
             {thread_id}
-
-            ---
-
-            Please generate the SQL query now:
             ''',
             input_variables=["history" , "user_query" , "thread_id"]
             )
@@ -133,3 +150,26 @@ class SQLAgent:
             return f"Error executing SQL query: {str(e)}"
 
 
+
+
+if __name__ == "__main__":
+
+    thread_id = "f3229e28-69c2-4e6e-a289-7498e115774c"
+    chat_history = [
+    "AI :- Following are the shortlisted candidates Kandace and Tomislav",
+    "Human :- Ok great can you give their contact info ?",
+    "AI : Here are their phone numbers 123124523 and 98578032412"
+    ]
+
+    user_query = f"Can you give me their email ? \n Thread ID :- {thread_id}"
+
+    obj  = SQLAgent()
+
+
+    generated_sql = obj.generate_sql_query(
+        thread_id=thread_id,
+        chat_history=chat_history,
+        user_query=user_query
+    )
+    
+    print("Generated SQL :-" , generated_sql)
