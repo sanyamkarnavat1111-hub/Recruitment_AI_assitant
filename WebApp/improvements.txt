@@ -14,10 +14,8 @@
 
                                 *** Pending *** 
     
-
+    # Create a clickable elements for followup questions in front end
     # Improve prompts in util code ( Sometimes no followups are asked , sometimes very short answers are povided for the queries.)
-    
-    
     # Add api rate limit to avoid spamming and abuse
 
 
@@ -36,29 +34,7 @@
     (During job description upload if JD has requirement of data scientist but if our database has android developers then next time
     if HR asks to shortlist based on that then our bot should do it .)
     
-    # Try migrating the data in SQL data to RAG
+    # Migrated and added the user data in RAG along with SQL for retrieval
         - Add metadata to stored documents like thread id , name , email and other candidate details
         - Add filters in similarity search (for now we only have filter using thread_id )
         - Add a query rewriter / rephraser that understand the chat history and rewrites the queries of user for RAG retrieval of database
-
-
-# Your Metadata Must Support 3 Filtering Layers
-
-To handle queries such as “give me email of Kandace”, you need three things in your metadata:
-
-metadata = {
-    "thread_id": "...",
-    "type": "user",  
-    "candidate_name": "Kandace Johnson",
-    "contact_number": "...",
-    "email_address": "...",
-    "skills": "...",
-    ...
-}
-
-
-thread_id → Ensures the chatbot only looks inside this user's session.
-
-type=user → Prevents job descriptions from mixing with resumes.
-
-candidate_name → Enables semantic + metadata filtering for "Kandace".

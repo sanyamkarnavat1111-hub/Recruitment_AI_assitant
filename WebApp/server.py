@@ -14,7 +14,8 @@ from utils import (
     get_fittest_candidates , 
     remove_extra_space,
     summarize_job_description,
-    validate_contact_info
+    validate_contact_info,
+    download_and_save_google_sheet_in_csv
 )
 from database_sqlite import (
     test_connection, drop_table, create_table,
@@ -367,7 +368,8 @@ async def process_resumes(task_id: str, resume_files: List[UploadFile], thread_i
         initial_state = {
             "messages": [],
             "thread_id": thread_id,
-            "sql_retrieval": ""
+            "sql_retrieval": "",
+            "rag_retrieval" : ""
         }
         workflow.update_state(config=config, values=initial_state)
 
@@ -453,6 +455,70 @@ async def upload_files(
                     os.unlink(path)
                 except:
                     pass
+
+@app.post("/upload_google_sheet_csv")
+async def add_google_sheet_knowledge(
+    thread_id: str = Depends(check_thread_id),
+    url: str = Form(...)
+):
+    
+    try :
+
+        logger.info(f"[THREAD {thread_id}] Downloading the csv version of sheet for url :- {url}")
+        temp_file_path = download_and_save_google_sheet_in_csv(sheet_url=url)
+        logger.info(f"[THREAD {thread_id}] Download successfull for url :- {url}")
+        
+        logger.info(f"[THREAD {thread_id}] Parsing the saved csv file ... ")
+        documents = parse_file(file_path=temp_file_path , parsing_for_vector=True)
+        logger.info(f"[THREAD {thread_id}] Successfully parsed the csv file ... ")
+
+        logger.info(f"[THREAD {thread_id}] Storing CSV document to vector store ... ")
+        vectorStore.store_general_embeddings(thread_id=thread_id , documents=documents)
+        logger.info(f"[THREAD {thread_id}] Successfully stored CSV documents to vector store ... ")
+
+        os.remove(temp_file_path)
+
+        config = {"configurable": {"thread_id": thread_id}}
+        initial_state = {
+            "messages": [],
+            "thread_id": thread_id,
+            "sql_retrieval": "",
+            "rag_retrieval" : ""
+        }
+        workflow.update_state(config=config, values=initial_state)
+
+
+        return JSONResponse(
+            status_code=200,
+            content={
+            "success" : "True",
+            "message" : "Google sheet url was fetched , saved and added to knowledge base."
+        })
+    except Exception as e :
+
+        if temp_file_path and os.path.exists(temp_file_path):
+            os.remove(temp_file_path)
+        logger.info(f"[THREAD {thread_id}] Error parsing google sheet url .. {e}")
+
+        return JSONResponse(
+        status_code=400,
+        content={
+            "success": False,
+            "message": str(e)  # This will now show real errors like "Sheet not public", timeout, etc.
+        }
+    )
+
+
+
+
+
+
+    
+
+
+    
+
+
 
 # ====================== Query Endpoint ======================
 @app.post('/query')

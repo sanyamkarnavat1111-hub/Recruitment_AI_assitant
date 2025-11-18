@@ -4,7 +4,8 @@ from pathlib import Path
 from langchain_community.document_loaders import (
     PyMuPDFLoader,
     Docx2txtLoader,
-    TextLoader
+    TextLoader,
+    CSVLoader
 )
 from langchain_core.prompts import ChatPromptTemplate
 from langchain_core.output_parsers import StrOutputParser
@@ -12,6 +13,9 @@ from LLM_models import llm_resume_data_extractor , llm_resume_analysis , chat_ll
 from tenacity import retry , stop_after_attempt , wait_exponential , wait_fixed
 from database_sqlite import get_shortlisted_candidates , update_evaluated_candidates
 import re
+import requests
+import tempfile
+from langchain_community.document_loaders import CSVLoader
 
 
 
@@ -72,6 +76,8 @@ def parse_file(file_path: str , parsing_for_vector=False) -> str:
             loader = Docx2txtLoader(file_path)
         elif extension == ".txt":
             loader = TextLoader(file_path, encoding="utf-8")
+        elif extension == ".csv":
+            loader = CSVLoader(file_path=file_path)
         else:
             print(f"Unsupported extension: {extension}")
             return ""
@@ -96,7 +102,30 @@ def parse_file(file_path: str , parsing_for_vector=False) -> str:
         return ""
     
 
-@retry(stop=stop_after_attempt(2), wait=wait_fixed(5))
+def download_and_save_google_sheet_in_csv(sheet_url, gid=0):
+
+    # Extract sheet ID from the URL
+    match = re.search(r"/d/([a-zA-Z0-9-_]+)", sheet_url)
+    if not match:
+        raise ValueError("Invalid Google Sheet URL")
+    sheet_id = match.group(1)
+
+    # Build CSV export URL
+    csv_url = f"https://docs.google.com/spreadsheets/d/{sheet_id}/export?format=csv&gid={gid}"
+
+    # Fetch CSV content
+    response = requests.get(csv_url)
+    response.raise_for_status()
+
+    # Save to temporary file
+    with tempfile.NamedTemporaryFile(mode='w+b', suffix=".csv", delete=False) as tmp_file:
+        tmp_file.write(response.content)
+        tmp_file_path = tmp_file.name
+    print(f"CSV downloaded to temporary file: {tmp_file_path}")
+    
+    return tmp_file_path
+
+@retry(stop=stop_after_attempt(5), wait=wait_fixed(2))
 def summarize_job_description(job_description : str) -> str:
 
     try :
