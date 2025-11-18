@@ -8,6 +8,8 @@ class SQLAgent:
     @retry(stop=stop_after_attempt(3) , wait=wait_exponential(multiplier=2 , max=20))
     def generate_sql_query(self, thread_id: str , chat_history : list[str] , user_query : str) -> str:
         try:
+
+
             prompt = PromptTemplate(template='''
             You are an assistant that generates SQLite3-compatible SELECT queries based on a conversation between a human and an AI.
             
@@ -31,8 +33,6 @@ class SQLAgent:
                 - Extract the best matching name or email from the conversation.
                 - Convert the extracted name to lowercase using LOWER() in SQL.
                 - Use pattern matching with LIKE to search for similar names or emails.
-            
-            Your final output should be only the SQL query, with no explanation.
 
             ### Database Structure:
             Currently, there are two tables in the database 'users' and 'job_description':
@@ -77,13 +77,17 @@ class SQLAgent:
             ''',
             input_variables=["history" , "user_query" , "thread_id"]
             )
-
+            
+            
             sql_query_generator = prompt | llm_sql_query_generator
+
+            
             output = sql_query_generator.invoke(input={
                 "history" : chat_history,
                 "user_query" : user_query,
                 "thread_id" : thread_id
             })
+
 
             return output.sql_query
             
@@ -195,6 +199,10 @@ if __name__ == "__main__":
         thread_id=thread_id,
         chat_history=chat_history,
         user_query=user_query
+    )
+
+    results = obj.execute_sql_query(
+        sql_query=generated_sql
     )
 
     # fixed_sql_query = obj.sql_query_fixer(
