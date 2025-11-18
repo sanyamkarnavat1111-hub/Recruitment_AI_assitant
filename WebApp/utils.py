@@ -8,9 +8,9 @@ from langchain_community.document_loaders import (
 )
 from langchain_core.prompts import ChatPromptTemplate
 from langchain_core.output_parsers import StrOutputParser
-from LLM_models import llm_resume_data_extractor , llm_resume_analysis , chat_llm , chat_llm_ollama
+from LLM_models import llm_resume_data_extractor , llm_resume_analysis , chat_llm , chat_llm_2
 from tenacity import retry , stop_after_attempt , wait_exponential , wait_fixed
-from database_sqlite import get_non_evluated_candidates , update_evaluated_candidates
+from database_sqlite import get_shortlisted_candidates , update_evaluated_candidates
 import re
 
 
@@ -112,7 +112,7 @@ def summarize_job_description(job_description : str) -> str:
             '''
         )
 
-        chain = prompt | chat_llm_ollama | StrOutputParser()
+        chain = prompt | chat_llm | StrOutputParser()
 
         summarized_jd = chain.invoke(input={
             "job_description" : job_description
@@ -127,7 +127,7 @@ def summarize_job_description(job_description : str) -> str:
         print(f"Error while summarizing job description :- {e}")
 
 
-@retry(stop=stop_after_attempt(5), wait=wait_exponential(multiplier=2 , max=25))
+@retry(stop=stop_after_attempt(10), wait=wait_exponential(multiplier=2 , max=25))
 def extract_data_from_resume(resume_data: str) -> dict:
     
     # Define the extraction prompt
@@ -173,7 +173,7 @@ def extract_data_from_resume(resume_data: str) -> dict:
             "projects": result.projects
         }
     
-@retry(stop=stop_after_attempt(5), wait=wait_fixed(5))
+@retry(stop=stop_after_attempt(10), wait=wait_fixed(5))
 def analyze_resume(extracted_resume_data: dict, job_description: str):
     # Extract data from the resume dictionary
     
@@ -242,7 +242,7 @@ def get_fittest_candidates(thread_id: str) -> str:
     Return a formatted string of analyzed and shortlisted candidates by AI .
     """
     try:
-        non_evaluated_candidates = get_non_evluated_candidates(thread_id=thread_id)
+        non_evaluated_candidates = get_shortlisted_candidates(thread_id=thread_id)
 
         if not non_evaluated_candidates:
             
@@ -315,7 +315,9 @@ def get_fittest_candidates(thread_id: str) -> str:
             '''
         )
 
-        chain = prompt | chat_llm | StrOutputParser()
+        
+
+        chain = prompt | chat_llm_2 | StrOutputParser()
 
         response = chain.invoke({
             "candidate_data": formatted_candidate_data

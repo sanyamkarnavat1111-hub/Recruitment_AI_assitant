@@ -2,6 +2,7 @@ from langchain_chroma import Chroma
 from langchain_text_splitters import RecursiveCharacterTextSplitter
 from LLM_models import gemini_embeddings
 import os
+from utils import parse_file
 
 
 os.makedirs(os.environ['EMBEDDING_DIR'] , exist_ok=True)
@@ -14,49 +15,78 @@ class VectorStorage:
 
         self.vector_store = Chroma(
             embedding_function=gemini_embeddings,
-            persist_directory=persist_directory  
+            persist_directory=persist_directory
         )
-
-        
     
-    def store_embeddings(self, thread_id, documents):
+    def store_general_embeddings(self, thread_id, documents):
 
-        # Parse the file and split into documents
         if not documents:
             return None
 
-        # Split documents into chunks for embedding
-        splitter = RecursiveCharacterTextSplitter(chunk_size=1000, chunk_overlap=200)
-        splitted_documents = splitter.split_documents(documents=documents)
-
-        # Add the thread_id as metadata to each document
-        # We modify the documents to include thread_id
-        documents_with_metadata = []
-        for doc in splitted_documents:
-            doc.metadata['thread_id'] = thread_id
-            documents_with_metadata.append(doc)
-
-        # Add the documents with the additional metadata to Chroma
-        self.vector_store.add_documents(documents=documents_with_metadata)
-
-
-    def similarity_search(self, thread_id , query , top_k=3):
-
-        results = self.vector_store.similarity_search(
-            query, k=top_k, filter={"thread_id": thread_id}
+        splitter = RecursiveCharacterTextSplitter(
+            chunk_size=1000,
+            chunk_overlap=200
         )
-        if results:
-            retrieved_data = "Retrieved data from knowledge base .\n"
-            for res in results:
-                retrieved_data += "-"*20
-                retrieved_data += f"{res.page_content} [{res.metadata}]"
-            return results
+        splitted_documents = splitter.split_documents(documents)
 
-        return "No relevant results found from document"
+        # Add metadata
+        for doc in splitted_documents:
+            doc.metadata["thread_id"] = thread_id
+            doc.metadata["type"] = "general"
+
+        self.vector_store.add_documents(splitted_documents)
+        return splitted_documents
+
+
+    def store_user_embeddings(self, thread_id: str, user_data: str):
+
+        metadata = {
+            "thread_id": thread_id,
+            "type": "user"
+        }
+
+        # Store as a single text document
+        self.vector_store.add_texts(
+            texts=[user_data],       
+            metadatas=[metadata]      
+        )
+
+        
+
+    def similarity_search(self, thread_id, query, top_k=3):
+
+        results  = self.vector_store.similarity_search(
+            query,
+            k=top_k,
+            filter={
+                "thread_id": thread_id,
+            }
+        )
+
+        if not results:
+            return "No relevant results found."
+
+        return results
+
+
 
 if __name__ == "__main__":
     obj = VectorStorage()
-    res = obj.store_embeddings(file_path="Uploads/data-scientist-resume-example.pdf" , thread_id="sam")
+
+    documents = parse_file(
+        file_path="Uploads/data-scientist-resume-example.pdf",
+        parsing_for_vector=True
+    )
+
+    
+    res = obj.store_embeddings(
+        thread_id="sam",
+        documents=documents,
+        type_of_doc="user"
+    )
+
+    print("Results :- \n" , res)
+
 
     
 

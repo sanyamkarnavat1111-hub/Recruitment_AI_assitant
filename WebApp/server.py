@@ -259,7 +259,7 @@ async def process_resumes(task_id: str, resume_files: List[UploadFile], thread_i
                 resume_analysis_summary = analysis_result['resume_analysis_summary']
 
 
-                if fit_score > 7:
+                if fit_score >= 7:
                     hire = 1
                     extracted_resume_data.update({
                         "shortlisted" : 1
@@ -306,10 +306,25 @@ async def process_resumes(task_id: str, resume_files: List[UploadFile], thread_i
                 #     "linkedin_url" : linkedin_url,
                 #     "phone_number" : phone_number
                 # })
-
-
                 
+                candidate_name = str(extracted_resume_data['candidate_name']).lower()
+                formatted_user_data = f'''
+                Candidate name : {candidate_name}
 
+                Location of {candidate_name} : {extracted_resume_data['location']}
+
+                Contact information - info
+                    - mail of {candidate_name} : {extracted_resume_data['email_address']}
+                    - Contact number - Phone number of {candidate_name} : {extracted_resume_data['contact_number']}
+                    - Linked In of {candidate_name} :- {extracted_resume_data['linkedin_url']} 
+                Total experience of {candidate_name} :- {extracted_resume_data['total_experience']}
+
+                '''
+
+                vectorStore.store_user_embeddings(
+                    thread_id=thread_id,
+                    user_data=formatted_user_data
+                )
 
                 insert_extracted_data(extracted_resume_data=extracted_resume_data)
                 processed_count += 1
@@ -413,9 +428,9 @@ async def upload_files(
             temp_paths.append(temp_path)
 
             file_document = parse_file(temp_path, parsing_for_vector=True)
-            vectorStore.store_embeddings(
+            vectorStore.store_general_embeddings(
                 thread_id=thread_id,
-                documents=file_document
+                documents=file_document,
             )
             processed_count += 1
 
@@ -476,7 +491,8 @@ def health_check():
 # ====================== Run Server ======================
 if __name__ == "__main__":
     
-    logger.info(f"GROQ API key :- {os.environ['GROQ_API_KEY']}")
+    logger.info(f"GROQ API key 1:- {os.environ['GROQ_API_KEY_1']}")
+    logger.info(f"GROQ API key 1:- {os.environ['GROQ_API_KEY_2']}")
     
     os.makedirs(os.environ.get('DATABASE_DIR', ''), exist_ok=True)
     os.makedirs(os.environ.get('CHAT_HISTORY_DIR', ''), exist_ok=True)

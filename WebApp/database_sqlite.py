@@ -188,7 +188,7 @@ def insert_job_description(
         conn.close()
 
 
-def get_non_evluated_candidates(thread_id: str):
+def get_shortlisted_candidates(thread_id: str):
     try:
         conn = get_db_connection()
         cursor = conn.cursor()
@@ -208,7 +208,7 @@ def get_non_evluated_candidates(thread_id: str):
                 shortlisted
             FROM users
             WHERE thread_id = ?
-            AND evaluated = 0
+            AND shortlisted = 1
             ORDER BY fit_score DESC
         """
 

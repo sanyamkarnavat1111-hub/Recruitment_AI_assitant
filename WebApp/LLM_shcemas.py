@@ -35,4 +35,6 @@ class CreateSqlQuery(BaseModel):
 class FixSqlQuery(BaseModel):
     sql_query_fixed : str = Field(... , description="Fixed sql query that includes where clause")
 
+class RagQueryRewritter(BaseModel):
+    rewritten_query : str = Field(... , description="Rewritten user query with meaningful information for accurate RAG retrieval.")
 

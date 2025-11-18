@@ -5,7 +5,7 @@ from langgraph.graph import START, END, StateGraph
 from langchain_core.messages import AIMessage, HumanMessage
 from langchain_core.output_parsers import StrOutputParser
 from langchain_core.prompts import ChatPromptTemplate
-from LLM_models import chat_llm_ollama
+from LLM_models import llm_query_rewritter , chat_llm 
 from LLM_shcemas import ChatState
 from langgraph.checkpoint.sqlite import SqliteSaver
 import sqlite3
@@ -68,23 +68,62 @@ def database_retriever(state: ChatState) -> ChatState:
 # RAG RETRIEVER
 # ==============================
 def rag_retriever(state: ChatState) -> ChatState:
+
     user_query = state['messages'][-1].content
     thread_id = state["thread_id"]
+    conversation_history = format_history(state['messages'], max_messages=7)
 
-    try :
-        docs = vectorstore.similarity_search(
-            thread_id=thread_id,
-            query=user_query,
-            top_k=5
+    try:
+
+        prompt = ChatPromptTemplate.from_template(
+            '''
+            Understand the conversation history that will be shared to you and 
+            rewrite the query replacing pronouns and other part of query with 
+            knowledge that you got from understanding the conversation making the 
+            retrieval of information from knowledge base more accurate if only required else keep the query as it is .
+            For example :- User query can be like "What is her email",
+            then understand the conversation history and replace her with relevant name
+            if present in converstation history.
+
+            # This is the conversation history :- 
+            {conversation_history}
+
+            # This is the query :- 
+            {user_query} 
+            '''
         )
-        
+
+        chain = prompt | llm_query_rewritter
+
+        rewritten_query = chain.invoke(input={
+            "conversation_history" : conversation_history,
+            "user_query" : user_query
+        }).rewritten_query
+
+        docs = vectorstore.similarity_search(
+                thread_id=thread_id,
+                query=rewritten_query,
+                top_k=3
+            )
         if docs:
             return {"rag_retrieval": docs}
         else:
             {"rag_retrieval" : "No relevant documents founds "}
+    except:
+        try :
+            docs = vectorstore.similarity_search(
+                thread_id=thread_id,
+                query=user_query,
+                top_k=5
+            )
+            
+            if docs:
+                return {"rag_retrieval": docs}
+            else:
+                {"rag_retrieval" : "No relevant documents founds "}
 
-    except Exception as e :
-        return {"rag_retrieval" : f"rag retrieval failed {e}"}
+        except Exception as e :
+            return {"rag_retrieval" : f"rag retrieval failed {e}"}
 
 # ==============================
 # FINAL QUERY NODE
@@ -94,7 +133,7 @@ def query(state: ChatState) -> ChatState:
     user_query = state['messages'][-1]
     sql_retrieval = state["sql_retrieval"] if state["sql_retrieval"] else "No database info found."
     rag_retrieval = state["rag_retrieval"] if state["rag_retrieval"] else  "No document info found."
-    conversation_history = format_history(state['messages'], max_messages=7)
+    # conversation_history = format_history(state['messages'], max_messages=7)
 
 
     prompt = ChatPromptTemplate.from_messages([
@@ -103,28 +142,28 @@ def query(state: ChatState) -> ChatState:
         without revealing sensitive information like thread-id and other irrelevant 
         information , just focus on what user has asked and based on the information
         that is provided to you encapsulate your answer to provide only 
-        required details to answer query of the user.
+        required details to answer query of the user. Also only provide the information
+        do not reveal from where you got the data simply focus on providing the relevant answer that you 
+        can answer of user. ALso check the data retrieved from database and RAG retrieval can overlap.
+        Intelligently answer with sufficient information.
          
         Answer using only relevant info:
 
-            DB Data:
+            Database retrieved data:
             {sql_retrieval}
 
-            Document Info:
+            RAG retrieved data :
             {rag_retrieval}
-
-            Chat History:
-            {conversation_history}
          
         """)),
         ("human", "From the given information answer the query of the user {user_query}")
     ])
 
-    chain = prompt | chat_llm_ollama | StrOutputParser()
+    chain = prompt | chat_llm | StrOutputParser()
     response = chain.invoke({
         "sql_retrieval": sql_retrieval,
         "rag_retrieval": rag_retrieval,
-        "conversation_history": conversation_history,
+        # "conversation_history": conversation_history,
         "user_query" : user_query
     })
 
