@@ -21,7 +21,8 @@
 
 
 
-                        *** Changes Done *** 
+                        *** Changes Done ***
+    # Added a google sheet connector component 
     # Add a Dependency injection for thread id so that for every request we do not have to check if the thread id is provided or not.
     # Add a summarizer for job description as well .
     # The database entry like total year of experience should keep on getting updated (like if at the time of upload the candidate had 3 years of experience then after one years it should automatically update ) 

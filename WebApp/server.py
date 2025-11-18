@@ -507,19 +507,6 @@ async def add_google_sheet_knowledge(
             "message": str(e)  # This will now show real errors like "Sheet not public", timeout, etc.
         }
     )
-
-
-
-
-
-
-    
-
-
-    
-
-
-
 # ====================== Query Endpoint ======================
 @app.post('/query')
 def answer_query(
