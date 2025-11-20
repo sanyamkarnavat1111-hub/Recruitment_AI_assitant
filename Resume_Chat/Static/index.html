@@ -1,0 +1,186 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+  <meta charset="UTF-8" />
+  <meta name="viewport" content="width=device-width, initial-scale=1.0"/>
+  <title>ResumeAI - Smart Recruitment Assistant</title>
+  <link rel="stylesheet" href="static/styles.css" />
+  <link href="https://cdnjs.cloudflare.com/ajax/libs/font-awesome/6.5.0/css/all.min.css" rel="stylesheet">
+</head>
+<body>
+  <div class="chat-container">
+    <div class="chat-header">
+      <div class="header-info">
+        <i class="fas fa-robot"></i>
+        <div>
+          <h3>ResumeAI Assistant</h3>
+          <span class="status">Online</span>
+        </div>
+      </div>
+    </div>
+
+    <div id="chat-messages" class="chat-messages">
+      <div class="message bot-message">
+        <div class="avatar"><i class="fas fa-robot"></i></div>
+        <div class="bubble">
+          Hello! I'm your AI recruitment assistant. Upload resumes or job descriptions to get started, then ask me anything about candidates or requirements.
+        </div>
+      </div>
+    </div>
+
+    <div class="chat-input-container">
+      <div class="input-wrapper">
+        <label for="file-upload" class="upload-btn" title="Upload Resume or JD">
+          <i class="fas fa-paperclip"></i>
+          <input type="file" id="file-upload" accept=".pdf,.docx,.txt" />
+        </label>
+
+        <input
+          type="text"
+          id="user-input"
+          placeholder="Type your message here..."
+          autocomplete="off"
+          autofocus
+        />
+
+        <button id="send-btn" class="send-btn">
+          <i class="fas fa-paper-plane"></i>
+        </button>
+      </div>
+
+      <div class="thread-info">
+        Thread ID: <span id="thread-id-display">loading...</span>
+      </div>
+    </div>
+  </div>
+
+  <script>
+    const API_BASE = "http://localhost:3333";
+    let threadId = "thread_" + Date.now() + "_" + Math.random().toString(36).substr(2, 9);
+
+    document.getElementById("thread-id-display").textContent = threadId;
+
+    const messagesContainer = document.getElementById("chat-messages");
+    const userInput = document.getElementById("user-input");
+    const sendBtn = document.getElementById("send-btn");
+    const fileInput = document.getElementById("file-upload");
+
+    // Auto-scroll to bottom
+    function scrollToBottom() {
+      messagesContainer.scrollTop = messagesContainer.scrollHeight;
+    }
+
+    // Add message to chat
+    function addMessage(content, type = "user") {
+      const messageDiv = document.createElement("div");
+      messageDiv.className = `message ${type}-message`;
+
+      const avatar = document.createElement("div");
+      avatar.className = "avatar";
+      avatar.innerHTML = type === "bot" ? '<i class="fas fa-robot"></i>' : '<i class="fas fa-user"></i>';
+
+      const bubble = document.createElement("div");
+      bubble.className = "bubble";
+      bubble.textContent = content;
+
+      messageDiv.appendChild(avatar);
+      messageDiv.appendChild(bubble);
+      messagesContainer.appendChild(messageDiv);
+      scrollToBottom();
+    }
+
+    // Show typing indicator
+    function showTyping() {
+      const typing = document.createElement("div");
+      typing.className = "message bot-message typing";
+      typing.id = "typing-indicator";
+      typing.innerHTML = `
+        <div class="avatar"><i class="fas fa-robot"></i></div>
+        <div class="bubble">
+          <div class="typing-dots">
+            <span></span><span></span><span></span>
+          </div>
+        </div>
+      `;
+      messagesContainer.appendChild(typing);
+      scrollToBottom();
+    }
+
+    function hideTyping() {
+      const typing = document.getElementById("typing-indicator");
+      if (typing) typing.remove();
+    }
+
+    // Handle file upload
+    async function uploadFile(file) {
+      if (!file) return;
+
+      const formData = new FormData();
+      formData.append("file", file);
+      formData.append("thread_id", threadId);
+
+      addMessage(`Uploading ${file.name}...`, "user");
+
+      try {
+        const res = await fetch(`${API_BASE}/upload_files`, {
+          method: "POST",
+          body: formData,
+        });
+        const data = await res.json();
+        addMessage(data.message.includes("success") ? `File "${file.name}" uploaded successfully!` : `Error: ${data.message}`, "bot");
+      } catch (err) {
+        addMessage("Failed to upload file. Is the server running?", "bot");
+      }
+    }
+
+    // Handle send message
+    async function sendMessage() {
+      const query = userInput.value.trim();
+      if (!query && !fileInput.files[0]) return;
+
+      if (query) {
+        addMessage(query, "user");
+        userInput.value = "";
+        showTyping();
+
+        try {
+          const res = await fetch(`${API_BASE}/chat`, {
+            method: "POST",
+            headers: { "Content-Type": "application/json" },
+            body: JSON.stringify({
+              thread_id: threadId,
+              user_query: query,
+            }),
+          });
+          const data = await res.json();
+          hideTyping();
+          addMessage(data.message || "No response", "bot");
+        } catch (err) {
+          hideTyping();
+          addMessage("Error connecting to server. Is it running on port 3333?", "bot");
+        }
+      }
+    }
+
+    // Event Listeners
+    sendBtn.addEventListener("click", sendMessage);
+
+    userInput.addEventListener("keypress", (e) => {
+      if (e.key === "Enter" && !e.shiftKey) {
+        e.preventDefault();
+        sendMessage();
+      }
+    });
+
+    fileInput.addEventListener("change", () => {
+      if (fileInput.files[0]) {
+        uploadFile(fileInput.files[0]);
+        fileInput.value = ""; // Reset input
+      }
+    });
+
+    // Auto-scroll on load
+    scrollToBottom();
+  </script>
+</body>
+</html>

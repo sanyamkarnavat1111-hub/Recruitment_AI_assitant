@@ -4,6 +4,8 @@ from llm import gemini_embeddings , llm_query_rewritter
 from langchain_core.prompts import ChatPromptTemplate
 from tenacity import retry , stop_after_attempt , wait_fixed
 import os
+from typing import List
+from langchain_core.documents import Document
 
 os.makedirs(os.environ['EMBEDDING_DIR'] , exist_ok=True)
 
@@ -53,20 +55,26 @@ class VectorStorage:
 
         
 
-    def similarity_search(self, thread_id, query, top_k=3):
-
-        results  = self.vector_store.similarity_search(
-            query,
-            k=top_k,
-            filter={
-                "thread_id": thread_id,
-            }
-        )
-
-        if not results:
-            return "No relevant results found."
-
-        return results
+    def similarity_search(
+        self,
+        thread_id: str,
+        query: str,
+        top_k: int = 3,
+    ) -> List[Document]:
+        """
+        Always returns a list of Document objects.
+        Empty list if nothing is found.
+        """
+        try:
+            results: List[Document] = self.vector_store.similarity_search(
+                query,
+                k=top_k,
+                filter={"thread_id": thread_id},
+            )
+            return results
+        except Exception as e:
+            print(f"[THREAD:{thread_id}] Vector store similarity_search failed: {e}")
+            return []  # ← never return a string!
     
     @retry(stop=stop_after_attempt(5) , wait=wait_fixed(5))
     def rag_query_rewriter(self, user_query : str , conversation_history : str):

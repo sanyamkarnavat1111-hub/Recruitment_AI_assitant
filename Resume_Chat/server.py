@@ -1,5 +1,6 @@
 from fastapi import FastAPI , Depends , Form , UploadFile, HTTPException
-from fastapi.responses import JSONResponse
+from fastapi.staticfiles import StaticFiles
+from fastapi.responses import JSONResponse , FileResponse
 import logging
 import tempfile
 from langchain_community.chat_message_histories import SQLChatMessageHistory
@@ -40,10 +41,17 @@ logging.basicConfig(level=logging.INFO)
 logger = logging.getLogger(__name__)
 
 app = FastAPI(title="ResumeAI")
-
+app.mount("/static", StaticFiles(directory="static"), name="static")
 
 vectorStore = VectorStorage()
 sql_agent = SQLAgent()
+
+
+
+@app.get("/", response_class=FileResponse)
+async def serve_frontend():
+    return FileResponse("static/index.html")
+    
 
 # Dependency function to check thread_id
 def check_thread_id(thread_id: str = Form(...)) -> str:
@@ -167,7 +175,7 @@ async def chat(request : ChatRequest):
         history_store.add_user_message(request.user_query)
 
         full_history = history_store.messages  # List[BaseMessage]
-        short_history = full_history[-6:] if len(full_history) > 6 else full_history
+        short_history = full_history[-10:] if len(full_history) > 10 else full_history
         history_str = "\n".join([f"Human: {m.content}\nAI: {m.content}" if isinstance(m, AIMessage) else f"Human: {m.content}" for m in short_history])
         
         try:
@@ -194,7 +202,8 @@ async def chat(request : ChatRequest):
         except Exception as e :
             logger.error(f"[THREAD:{request.thread_id}] Error retrieving information from databaset :- {str(e)}")
 
-        rag_str = ""
+        rag_str = "No relevant documents found from RAG"
+
         try:
             logger.info(f"[THREAD:{request.thread_id}] Retrieving information via RAG ..")
             
@@ -203,27 +212,40 @@ async def chat(request : ChatRequest):
                 conversation_history=short_history
             )
 
-            rag_output= vectorStore.similarity_search(
+            rag_docs = vectorStore.similarity_search(
                 thread_id=request.thread_id,
-                query=rewritten_query
+                query=rewritten_query,
+                top_k=4  # you can increase a bit if you want
             )
-            logger.info(f"[THREAD:{request.thread_id}] RAG retrieval has some data ..")
-            if rag_output:
-                rag_str = "\n".join([doc.page_content for doc in rag_output])  
 
+            if rag_docs:  # rag_docs is always a list → safe
+                rag_str = "\n\n".join([doc.page_content for doc in rag_docs])
+                logger.info(f"[THREAD:{request.thread_id}] RAG retrieved {len(rag_docs)} chunks")
             else:
-                rag_str = "No relevant documents found from RAG"
-                logger.info(f"[THREAD:{request.thread_id}] No relevant info found from RAG ..")
+                logger.info(f"[THREAD:{request.thread_id}] No relevant info found from RAG")
 
-        except Exception as e :
-            logger.error(f"[THREAD:{request.thread_id}] Error retrieving info from RAG ...")
+        except Exception as e:
+            logger.error(f"[THREAD:{request.thread_id}] Error retrieving info from RAG: {e}")
+            rag_str = "No relevant documents found from RAG (error occurred)"
 
 
         
         prompt = ChatPromptTemplate.from_messages([
             ("system", "You are a helpful Human recruitment assistant. Your job is to study the information provided to you and answer the user queries to your fullest knowledge."),
             MessagesPlaceholder(variable_name="history"),
-            ("human", "{input}\n\nDatabase Results:\n{database_output}\n\nRAG Results:\n{rag_str}"),  # Fixed placeholder
+            ("human", """
+            Answer the following user query without revealing the source or knowledge and the extra knowledge retrieved from database and RAG(retrieval augmented generation) and chat history which was provided to you 
+            Use the extra information that was provided to you if they are relevant to answer user query otherwise be honest and answer based on what knowledge you have. 
+            
+            User query :- {input}
+             
+            Database Results:\n{database_output}
+             
+            RAG Results:\n{rag_str}
+             
+            Chat history :- {chat_history}
+            
+            """),
         ])
 
         chain = prompt | groq_llm_1 | StrOutputParser()
@@ -241,7 +263,8 @@ async def chat(request : ChatRequest):
             {
                 "input": request.user_query,
                 "database_output": str(database_output),
-                "rag_str": rag_str
+                "rag_str": rag_str,
+                "chat_history" : short_history
             },
             config={"configurable": {"session_id": request.thread_id}}
         )
