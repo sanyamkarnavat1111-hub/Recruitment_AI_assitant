@@ -1,0 +1,6 @@
+
+
+# To start WSL :- wsl -d Ubuntu (Note simply wsl won't work since wsl is moved to d drive)
+
+
+# UV command to create virtual environment :- uv venv --python 3.12.2  myenv

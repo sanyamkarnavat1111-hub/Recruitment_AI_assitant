@@ -16,3 +16,10 @@ AI_Model/
 *.bin
 *.sqlite3
 *.pkl
+*.jinja
+*.safetensors
+*.model
+*.lock
+*.incomplete
+*.log
+Screening-AI/Hugging_Face/*

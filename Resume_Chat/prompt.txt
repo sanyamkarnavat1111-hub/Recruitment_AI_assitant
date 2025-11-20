@@ -1,0 +1,9 @@
+How can I separate out css in other file "styles.css" note my project structure looks like this for now .
+
+
+
+server.py(present at root)
+
+-Static
+
+-- index.html (Inside Static folder)
