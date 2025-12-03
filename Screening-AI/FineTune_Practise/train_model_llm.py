@@ -1,9 +1,13 @@
 
 import os 
-import torch
+
 os.environ["HF_DATASETS_OFFLINE"] = "0"
 os.environ["UNSLOTH_DISABLE_FUSED_LOSS"] = "1"
+from dotenv import load_dotenv
 
+load_dotenv()
+
+import torch
 
 # 2. Force CUDA memory to report correctly (backup)
 if torch.cuda.is_available():
