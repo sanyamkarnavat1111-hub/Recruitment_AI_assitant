@@ -9,7 +9,7 @@ from dotenv import load_dotenv
 # === LOAD ENV VARIABLES ===
 load_dotenv()
 
-GROQ_API_KEY = "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"
+GROQ_API_KEY = "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"
 GROQ_MODEL = "llama-3.1-8b-instant"
 
 # === VALIDATE ===
